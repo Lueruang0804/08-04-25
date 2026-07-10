@@ -741,6 +741,37 @@ input:focus-visible {
   margin-bottom: 1.75rem;
 }
 
+/* ---------- Celebration: fireworks + floating "I love you" ---------- */
+.fireworks-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+#fireworks-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.fireworks-text-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fireworks-text-layer span {
+  position: absolute;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 600;
+  color: var(--tulip-pink);
+  text-shadow: var(--glow-pink);
+  white-space: nowrap;
+  opacity: 0;
+  animation: fx-rise linear forwards;
+}
+
 /* ---------- Photo gallery ---------- */
 .gallery__grid {
   display: grid;
