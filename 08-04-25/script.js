@@ -1099,7 +1099,7 @@
     var DEFAULT_VOLUME = 0.35;
     // Used only when no file has been uploaded through the admin
     // editor's Music section — swap freely, or upload a file instead.
-    var FALLBACK_YOUTUBE_ID = '4Lmcadu8ghM';
+    var FALLBACK_YOUTUBE_ID = 'hkLVI3DoeAE';
 
     var isPlaying = false;
     var backendReady = false;
