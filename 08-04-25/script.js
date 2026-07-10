@@ -399,8 +399,6 @@
     var rafId = null;
     var fireworkTimer = null;
     var textTimer = null;
-    var stopTimeout = null;
-    var CELEBRATION_DURATION_MS = 12000;
 
     function resizeFireworksCanvas() {
       canvas.width = window.innerWidth * dpr;
@@ -481,7 +479,6 @@
       rafId = requestAnimationFrame(fireworksStep);
       fireworkTimer = window.setInterval(spawnFirework, 700);
       textTimer = window.setInterval(spawnLoveText, 900);
-      stopTimeout = window.setTimeout(stopFireworksCelebration, CELEBRATION_DURATION_MS);
     }
 
     function stopFireworksCelebration() {
@@ -489,11 +486,9 @@
       if (rafId) cancelAnimationFrame(rafId);
       if (fireworkTimer) window.clearInterval(fireworkTimer);
       if (textTimer) window.clearInterval(textTimer);
-      if (stopTimeout) window.clearTimeout(stopTimeout);
       rafId = null;
       fireworkTimer = null;
       textTimer = null;
-      stopTimeout = null;
       fireworks = [];
       textLayer.innerHTML = '';
       window.removeEventListener('resize', resizeFireworksCanvas);
