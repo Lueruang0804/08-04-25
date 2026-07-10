@@ -386,10 +386,124 @@
     var reasonsSection = document.getElementById('reasons');
     var footerEl = document.querySelector('.footer');
 
+    // ---------- Fireworks + floating "I love you" text ----------
+    // Non-blocking (pointer-events: none), runs for a celebratory
+    // stretch after she confirms, then stops on its own.
+    var overlay = document.getElementById('fireworks-overlay');
+    var canvas = document.getElementById('fireworks-canvas');
+    var textLayer = document.getElementById('fireworks-text-layer');
+    var ctx = canvas.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var palette = ['#F7B6C2', '#E63946', '#FFD166', '#B8A8E3', '#2D6A4F', '#F8F8F8'];
+    var fireworks = [];
+    var rafId = null;
+    var fireworkTimer = null;
+    var textTimer = null;
+    var stopTimeout = null;
+    var CELEBRATION_DURATION_MS = 12000;
+
+    function resizeFireworksCanvas() {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function spawnFirework() {
+      var w = window.innerWidth, h = window.innerHeight;
+      var x = w * (0.15 + Math.random() * 0.7);
+      var y = h * (0.15 + Math.random() * 0.4);
+      var color = palette[Math.floor(Math.random() * palette.length)];
+      var count = 28 + Math.floor(Math.random() * 16);
+      var particles = [];
+      for (var i = 0; i < count; i++) {
+        var angle = (Math.PI * 2 * i) / count + Math.random() * 0.2;
+        var speed = 1.5 + Math.random() * 2.5;
+        particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 });
+      }
+      fireworks.push({ particles: particles, color: color });
+    }
+
+    function fireworksStep() {
+      var w = window.innerWidth, h = window.innerHeight;
+      ctx.clearRect(0, 0, w, h);
+      for (var i = fireworks.length - 1; i >= 0; i--) {
+        var fw = fireworks[i];
+        var alive = false;
+        for (var j = 0; j < fw.particles.length; j++) {
+          var p = fw.particles[j];
+          if (p.life <= 0) continue;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.045; // gravity
+          p.life -= 0.014;
+          if (p.life > 0) {
+            alive = true;
+            ctx.beginPath();
+            ctx.globalAlpha = Math.max(p.life, 0);
+            ctx.fillStyle = fw.color;
+            ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        if (!alive) fireworks.splice(i, 1);
+      }
+      ctx.globalAlpha = 1;
+      rafId = requestAnimationFrame(fireworksStep);
+    }
+
+    function spawnLoveText() {
+      var el = document.createElement('span');
+      el.textContent = 'I love you ❤';
+      el.style.left = (5 + Math.random() * 80) + 'vw';
+      el.style.top = (40 + Math.random() * 20) + 'vh';
+      el.style.fontSize = (1.1 + Math.random() * 1.4) + 'rem';
+      el.style.animationDuration = (5 + Math.random() * 3) + 's';
+      textLayer.appendChild(el);
+      window.setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 9000);
+    }
+
+    function startFireworksCelebration() {
+      overlay.hidden = false;
+      resizeFireworksCanvas();
+      spawnFirework();
+      spawnLoveText();
+      window.addEventListener('resize', resizeFireworksCanvas);
+
+      if (prefersReducedMotion) {
+        // One calm burst + text, no continuous loop.
+        window.setTimeout(stopFireworksCelebration, 3000);
+        return;
+      }
+      rafId = requestAnimationFrame(fireworksStep);
+      fireworkTimer = window.setInterval(spawnFirework, 700);
+      textTimer = window.setInterval(spawnLoveText, 900);
+      stopTimeout = window.setTimeout(stopFireworksCelebration, CELEBRATION_DURATION_MS);
+    }
+
+    function stopFireworksCelebration() {
+      overlay.hidden = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      if (fireworkTimer) window.clearInterval(fireworkTimer);
+      if (textTimer) window.clearInterval(textTimer);
+      if (stopTimeout) window.clearTimeout(stopTimeout);
+      rafId = null;
+      fireworkTimer = null;
+      textTimer = null;
+      stopTimeout = null;
+      fireworks = [];
+      textLayer.innerHTML = '';
+      window.removeEventListener('resize', resizeFireworksCanvas);
+    }
+
     readyBtn.addEventListener('click', function () {
       readyBtn.disabled = true;
       gateSection.classList.add('screen-fade-out');
       spawnHeartBurst();
+      startFireworksCelebration();
 
       window.setTimeout(function () {
         gateSection.hidden = true;
