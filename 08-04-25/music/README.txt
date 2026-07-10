@@ -1,7 +1,11 @@
-Drop your song here with this exact filename:
+Background music is now sourced from YouTube instead of a local file.
 
-  our-song.mp3
+To change the song, edit CONFIG.youtubeVideoId in script.js — it's the
+part of a YouTube link after "youtu.be/" (or after "v=" in a full
+youtube.com URL), before any "?" query string.
 
-The floating music-note button (bottom-right corner) will play it on
-loop once clicked. If the file is missing, the button quietly disables
-itself instead of throwing errors.
+Example: https://youtu.be/hkLVI3DoeAE?si=... -> video ID is hkLVI3DoeAE
+
+The video plays hidden (audio only) via YouTube's official embed
+player, controlled by the floating music button's play/pause and
+volume controls.
