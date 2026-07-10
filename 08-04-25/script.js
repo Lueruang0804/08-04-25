@@ -20,6 +20,8 @@
   var CONFIG = {
     galleryCaptionFallback: 'A cherished moment',
     apiBase: '/api',
+    // "Our Song" — swap this for a different YouTube video ID any time.
+    youtubeVideoId: 'hkLVI3DoeAE',
     offlineViewPasscode: '00-00-00',
     offlineAdminPasscode: '00000',
     offlineLetter:
@@ -569,7 +571,12 @@
   })();
 
   /* ============================================================
-     6. MUSIC PLAYER
+     6. MUSIC PLAYER — "Our Song" plays via a visually-hidden YouTube
+        embed (see CONFIG.youtubeVideoId), driven by the YouTube
+        IFrame API, but controlled entirely through our own play/pause
+        + volume UI. The <script src="https://www.youtube.com/iframe_api">
+        tag in index.html loads before this file and calls
+        window.onYouTubeIframeAPIReady once it's ready.
      ============================================================ */
   (function initMusicPlayer() {
     var toggleBtn = document.getElementById('music-toggle');
@@ -577,10 +584,51 @@
     var playBtn = document.getElementById('music-play');
     var playIcon = document.getElementById('music-play-icon');
     var volumeSlider = document.getElementById('music-volume');
-    var audio = document.getElementById('music-audio');
+
+    var ytPlayer = null;
+    var playerReady = false;
+    var playRequested = false;
     var isPlaying = false;
 
-    audio.volume = parseFloat(volumeSlider.value);
+    function setPlayingUI(playing) {
+      isPlaying = playing;
+      playIcon.textContent = playing ? '❚❚' : '▶';
+    }
+
+    window.onYouTubeIframeAPIReady = function () {
+      ytPlayer = new YT.Player('youtube-player', {
+        videoId: CONFIG.youtubeVideoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          // Looping a single video via the IFrame API requires repeating
+          // it as its own "playlist".
+          loop: 1,
+          playlist: CONFIG.youtubeVideoId
+        },
+        events: {
+          onReady: function () {
+            playerReady = true;
+            ytPlayer.setVolume(Math.round(parseFloat(volumeSlider.value) * 100));
+            if (playRequested) {
+              ytPlayer.playVideo();
+            }
+          },
+          onStateChange: function (event) {
+            if (event.data === YT.PlayerState.PLAYING) setPlayingUI(true);
+            else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setPlayingUI(false);
+          },
+          onError: function () {
+            playBtn.disabled = true;
+            playBtn.setAttribute('aria-label', "Couldn't load the song");
+          }
+        }
+      });
+    };
 
     toggleBtn.addEventListener('click', function () {
       var isOpen = !panel.hidden;
@@ -589,28 +637,22 @@
     });
 
     playBtn.addEventListener('click', function () {
+      if (!playerReady) {
+        // API/player still loading — remember the click and honor it
+        // as soon as onReady fires.
+        playRequested = true;
+        return;
+      }
       if (isPlaying) {
-        audio.pause();
-        playIcon.textContent = '▶';
-        isPlaying = false;
+        ytPlayer.pauseVideo();
       } else {
-        audio.play().then(function () {
-          playIcon.textContent = '❚❚';
-          isPlaying = true;
-        }).catch(function () {
-          // Music file not present yet — fail silently, no console spam.
-        });
+        ytPlayer.playVideo();
       }
     });
 
     volumeSlider.addEventListener('input', function () {
-      audio.volume = parseFloat(volumeSlider.value);
+      if (playerReady) ytPlayer.setVolume(Math.round(parseFloat(volumeSlider.value) * 100));
     });
-
-    audio.addEventListener('error', function () {
-      playBtn.disabled = true;
-      playBtn.setAttribute('aria-label', 'Music file not found');
-    }, true);
   })();
 
   /* ============================================================
