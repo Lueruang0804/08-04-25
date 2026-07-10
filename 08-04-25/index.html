@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Happy Anniversary ❤️</title>
+<meta name="description" content="A private anniversary surprise, made with love." />
+
+<!-- Google Fonts: Playfair Display (serif headings) + Inter (body) + Caveat (handwritten captions) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,500&family=Inter:wght@300;400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ============================================================
+     SHARED NIGHT-GARDEN BACKGROUND (sits behind every screen)
+     ============================================================ -->
+<div class="night-sky" aria-hidden="true">
+  <canvas id="sky-canvas"></canvas>
+  <div class="moon"></div>
+  <div class="cloud cloud--1"></div>
+  <div class="cloud cloud--2"></div>
+  <div class="cloud cloud--3"></div>
+
+  <div class="tulip-field tulip-field--back">
+    <!-- SVG tulip rows injected by script.js -->
+  </div>
+  <div class="tulip-field tulip-field--mid"></div>
+  <div class="tulip-field tulip-field--front"></div>
+</div>
+
+<!-- Layer for spawned floating effects (hearts, petals, sparkles) -->
+<div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
+
+<!-- ============================================================
+     SCREEN 1 — LANDING
+     ============================================================ -->
+<section id="landing" class="screen landing" aria-label="Welcome">
+  <div class="landing__content reveal-up">
+    <p class="eyebrow">For the love of my life</p>
+    <h1 class="title-hero">Happy Anniversary <span class="heart">❤️</span></h1>
+    <p class="subtitle">I made something special just for you...</p>
+    <button id="begin-btn" class="btn btn--glow" type="button">
+      <span>Begin</span>
+    </button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 2 — PASSCODE GATE
+     ============================================================ -->
+<section id="passcode" class="screen passcode" aria-label="Enter our anniversary date" hidden>
+  <div class="glass-card passcode__card reveal-up">
+    <p class="card-eyebrow">A little test, my love</p>
+    <h2 class="passcode__question">What date is our anniversary?</h2>
+
+    <form id="passcode-form" class="passcode__form" autocomplete="off">
+      <label for="passcode-input" class="sr-only">Enter our anniversary date in MM-DD-YY format</label>
+      <input
+        id="passcode-input"
+        class="passcode__input"
+        type="password"
+        inputmode="numeric"
+        placeholder="MM-DD-YY"
+        maxlength="8"
+        aria-describedby="passcode-message"
+      />
+      <button id="passcode-submit" class="btn btn--glow" type="submit">
+        <span>Unlock Our Story</span>
+      </button>
+    </form>
+
+    <p id="passcode-message" class="passcode__message" role="status" aria-live="polite"></p>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 2b — HIDDEN LETTER EDITOR (admin passcode only)
+     ============================================================ -->
+<section id="editor" class="screen editor" aria-label="Letter editor" hidden>
+  <div class="glass-card editor__card reveal-up">
+    <p class="card-eyebrow">Welcome back</p>
+    <h2 class="editor__title">Edit the love letter</h2>
+    <p class="editor__hint">This becomes the letter she sees the next time she enters the viewing passcode.</p>
+
+    <label for="editor-textarea" class="sr-only">Love letter text</label>
+    <textarea
+      id="editor-textarea"
+      class="editor__textarea"
+      rows="10"
+      placeholder="Write your letter here. Leave a blank line between paragraphs."
+    ></textarea>
+
+    <p id="editor-message" class="editor__message" role="status" aria-live="polite"></p>
+
+    <div class="editor__actions">
+      <button id="editor-cancel" class="btn btn--ghost" type="button">Cancel</button>
+      <button id="editor-preview" class="btn btn--ghost" type="button">Preview</button>
+      <button id="editor-save" class="btn btn--glow" type="button">Save</button>
+    </div>
+  </div>
+
+  <!-- Preview overlay: reuses the public letter styling, unsaved -->
+  <div id="editor-preview-modal" class="lightbox editor__preview-modal" hidden>
+    <button class="lightbox__close" id="editor-preview-close" aria-label="Close preview">&times;</button>
+    <div class="glass-card letter__card editor__preview-card">
+      <p class="letter__paragraph letter__paragraph--first"><span class="drop-cap">D</span>ear My Love,</p>
+      <div id="editor-preview-content"></div>
+      <div class="heart-divider" aria-hidden="true">
+        <span class="heart-divider__line"></span>
+        <span class="heart-divider__icon">❤</span>
+        <span class="heart-divider__line"></span>
+      </div>
+      <p class="letter__signoff">Forever yours,</p>
+      <p class="letter__signature">[Your Name]</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN 3 — MAIN ANNIVERSARY PAGE
+     ============================================================ -->
+<main id="main" class="screen main-page" hidden>
+
+  <!-- ---------- HERO ---------- -->
+  <section id="hero" class="section hero">
+    <div class="hero__content reveal-up">
+      <h1 class="title-hero">Happy Anniversary <span class="heart">❤️</span></h1>
+      <p class="hero__tagline">Every day with you has been the happiest chapter of my life.</p>
+      <a href="#letter" class="btn btn--glow btn--ghost" id="read-letter-btn">
+        <span>Read My Letter</span>
+      </a>
+    </div>
+    <div class="scroll-cue" aria-hidden="true"><span></span></div>
+  </section>
+
+  <!-- ---------- LOVE LETTER ---------- -->
+  <section id="letter" class="section letter">
+    <div class="letter__card glass-card reveal-on-scroll">
+      <p class="card-eyebrow">A letter, just for you</p>
+
+      <div class="letter__body">
+        <p class="letter__paragraph letter__paragraph--first">
+          <span class="drop-cap">D</span>ear My Love,
+        </p>
+
+        <!-- Populated from the saved letter (via /api/letter). Falls back
+             to a placeholder if it hasn't been fetched yet or the API
+             is unreachable (e.g. when testing the file locally). -->
+        <div id="letter-content" class="letter__dynamic" aria-live="polite">
+          <p class="letter__paragraph">Loading our letter...</p>
+        </div>
+
+        <div class="heart-divider" aria-hidden="true">
+          <span class="heart-divider__line"></span>
+          <span class="heart-divider__icon">❤</span>
+          <span class="heart-divider__line"></span>
+        </div>
+
+        <p class="letter__signoff">Forever yours,</p>
+        <p class="letter__signature">[Your Name]</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ---------- PHOTO GALLERY ---------- -->
+  <section id="gallery" class="section gallery">
+    <h2 class="section-title reveal-on-scroll">Our Moments</h2>
+    <p class="section-subtitle reveal-on-scroll">Little pieces of us, frozen in time.</p>
+
+    <!-- ============ CUSTOMIZE HERE: replace photo1.jpg...photo6.jpg and captions ============ -->
+    <div class="gallery__grid">
+      <figure class="gallery__item reveal-on-scroll" data-span="tall">
+        <img src="images/photo1.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>The day it all began 🌷</figcaption>
+      </figure>
+      <figure class="gallery__item reveal-on-scroll">
+        <img src="images/photo2.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>That smile of yours</figcaption>
+      </figure>
+      <figure class="gallery__item reveal-on-scroll">
+        <img src="images/photo3.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>One of my favorite days</figcaption>
+      </figure>
+      <figure class="gallery__item reveal-on-scroll" data-span="tall">
+        <img src="images/photo4.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>Us, being us</figcaption>
+      </figure>
+      <figure class="gallery__item reveal-on-scroll">
+        <img src="images/photo5.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>A moment I never want to forget</figcaption>
+      </figure>
+      <figure class="gallery__item reveal-on-scroll">
+        <img src="images/photo6.jpg" alt="A cherished memory together" loading="lazy"
+             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <figcaption>Here's to many more</figcaption>
+      </figure>
+    </div>
+    <!-- ============ END CUSTOMIZE ============ -->
+
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" hidden>
+      <button class="lightbox__close" id="lightbox-close" aria-label="Close photo viewer">&times;</button>
+      <button class="lightbox__nav lightbox__nav--prev" id="lightbox-prev" aria-label="Previous photo">&#10094;</button>
+      <img id="lightbox-img" class="lightbox__img" src="" alt="" />
+      <button class="lightbox__nav lightbox__nav--next" id="lightbox-next" aria-label="Next photo">&#10095;</button>
+      <p id="lightbox-caption" class="lightbox__caption"></p>
+    </div>
+  </section>
+
+  <!-- ---------- MEMORY TIMELINE ---------- -->
+  <section id="timeline" class="section timeline">
+    <h2 class="section-title reveal-on-scroll">Our Story So Far</h2>
+    <p class="section-subtitle reveal-on-scroll">Every chapter, worth remembering.</p>
+
+    <!-- ============ CUSTOMIZE HERE: timeline entries ============ -->
+    <div class="timeline__track">
+      <article class="timeline__card reveal-on-scroll">
+        <span class="timeline__icon">❤️</span>
+        <h3>The Day We Met</h3>
+        <p>[Describe the day your story began.]</p>
+      </article>
+      <article class="timeline__card reveal-on-scroll">
+        <span class="timeline__icon">🌷</span>
+        <h3>Our First Date</h3>
+        <p>[Describe your first date together.]</p>
+      </article>
+      <article class="timeline__card reveal-on-scroll">
+        <span class="timeline__icon">📸</span>
+        <h3>Our Favorite Memory</h3>
+        <p>[Describe a memory that means the world to you.]</p>
+      </article>
+      <article class="timeline__card reveal-on-scroll">
+        <span class="timeline__icon">🎂</span>
+        <h3>Birthdays Together</h3>
+        <p>[Describe celebrating birthdays as a couple.]</p>
+      </article>
+      <article class="timeline__card timeline__card--today reveal-on-scroll">
+        <span class="timeline__icon">💕</span>
+        <h3>Today — Our Anniversary</h3>
+        <p>And here we are, still writing our story together.</p>
+      </article>
+    </div>
+    <!-- ============ END CUSTOMIZE ============ -->
+  </section>
+
+  <!-- ---------- REASONS I LOVE YOU ---------- -->
+  <section id="reasons" class="section reasons">
+    <h2 class="section-title reveal-on-scroll">Reasons I Love You</h2>
+    <p class="section-subtitle reveal-on-scroll">Just a few, out of infinite.</p>
+
+    <!-- ============ CUSTOMIZE HERE: add / edit as many as you like ============ -->
+    <div class="reasons__grid">
+      <div class="reasons__card reveal-on-scroll"><p>I love your smile.</p></div>
+      <div class="reasons__card reveal-on-scroll"><p>You make every day brighter.</p></div>
+      <div class="reasons__card reveal-on-scroll"><p>You are my safe place.</p></div>
+      <div class="reasons__card reveal-on-scroll"><p>You believe in me.</p></div>
+      <div class="reasons__card reveal-on-scroll"><p>You are my favorite person.</p></div>
+    </div>
+    <!-- ============ END CUSTOMIZE ============ -->
+  </section>
+
+  <!-- ---------- FOOTER ---------- -->
+  <footer class="footer">
+    <p class="footer__heart">Happy Anniversary ❤️</p>
+    <p>Thank you for being the most beautiful part of my life.</p>
+    <p>My forever starts and ends with you.</p>
+    <p class="footer__year">&copy; <span id="footer-year"></span></p>
+  </footer>
+
+</main>
+
+<!-- ============================================================
+     FLOATING MUSIC PLAYER (visible once main page is unlocked)
+     ============================================================ -->
+<div id="music-player" class="music-player" hidden>
+  <button id="music-toggle" class="music-player__toggle" aria-label="Open music player" aria-expanded="false">
+    <span class="music-note">♪</span>
+  </button>
+  <div id="music-panel" class="music-player__panel" hidden>
+    <button id="music-play" class="music-player__play" aria-label="Play our song">
+      <span id="music-play-icon">▶</span>
+    </button>
+    <label class="music-player__volume-label" for="music-volume">Volume</label>
+    <input id="music-volume" class="music-player__volume" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volume">
+    <span class="music-player__title">Our Song</span>
+  </div>
+  <audio id="music-audio" src="music/our-song.mp3" loop preload="none"></audio>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "08-04-25-anniversary-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A romantic anniversary website with a passcode gate and a hidden, database-backed letter editor.",
+  "license": "UNLICENSED"
+}
