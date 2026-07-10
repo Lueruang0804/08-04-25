@@ -27,7 +27,14 @@
     offlineLetter:
       "[Write your personal letter here. Talk about how you met, what she means to you, " +
       "your favorite memory together, and what you're looking forward to. This is the heart " +
-      "of the whole website — take your time with it.]"
+      "of the whole website — take your time with it.]",
+    offlineTimelineEntries: [
+      { icon: '❤️', title: 'The Day We Met', text: '[Describe the day your story began.]' },
+      { icon: '🌷', title: 'Our First Date', text: '[Describe your first date together.]' },
+      { icon: '📸', title: 'Our Favorite Memory', text: '[Describe a memory that means the world to you.]' },
+      { icon: '🎂', title: 'Birthdays Together', text: '[Describe celebrating birthdays as a couple.]' },
+      { icon: '💕', title: 'Today — Our Anniversary', text: 'And here we are, still writing our story together.' }
+    ]
   };
 
   // Remembered only in memory for this page session so Save can re-send
@@ -309,6 +316,7 @@
           window.setTimeout(function () { mainEl.classList.remove('screen-fade-in'); }, 1300);
           initScrollReveal();
           loadLetterIntoPage();
+          loadTimelineIntoPage();
         }, prefersReducedMotion ? 0 : 900);
       }, prefersReducedMotion ? 0 : 700);
     });
@@ -350,6 +358,70 @@
     });
   }
 
+  /* ---------- Our Story So Far (timeline) ---------- */
+  function renderTimelineTrack(container, entries) {
+    container.innerHTML = '';
+    var list = Array.isArray(entries) && entries.length > 0 ? entries : CONFIG.offlineTimelineEntries;
+    list.forEach(function (entry, index) {
+      var article = document.createElement('article');
+      article.className = 'timeline__card reveal-on-scroll';
+      if (index === list.length - 1) article.classList.add('timeline__card--today');
+
+      var icon = document.createElement('span');
+      icon.className = 'timeline__icon';
+      icon.textContent = entry.icon || '';
+
+      var h3 = document.createElement('h3');
+      h3.textContent = entry.title || '';
+
+      var p = document.createElement('p');
+      p.textContent = entry.text || '';
+
+      article.appendChild(icon);
+      article.appendChild(h3);
+      article.appendChild(p);
+      container.appendChild(article);
+      registerRevealTarget(article);
+    });
+  }
+
+  function fetchTimeline() {
+    return fetch(CONFIG.apiBase + '/timeline')
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('fetch_failed');
+        return resp.json();
+      })
+      .then(function (data) { return Array.isArray(data.entries) ? data.entries : CONFIG.offlineTimelineEntries; })
+      .catch(function () { return CONFIG.offlineTimelineEntries; });
+  }
+
+  function loadTimelineIntoPage() {
+    var container = document.getElementById('timeline-track');
+    fetchTimeline().then(function (entries) {
+      renderTimelineTrack(container, entries);
+    });
+  }
+
+  /* ---------- Gallery photo URLs (served from Supabase Storage) ---------- */
+  var photoBaseUrlPromise = null;
+  function getPhotoBaseUrl() {
+    if (!photoBaseUrlPromise) {
+      photoBaseUrlPromise = fetch(CONFIG.apiBase + '/config')
+        .then(function (resp) {
+          if (!resp.ok) throw new Error('config_failed');
+          return resp.json();
+        })
+        .then(function (data) { return data.supabaseUrl || null; })
+        .catch(function () { return null; });
+    }
+    return photoBaseUrlPromise;
+  }
+
+  function photoUrlForSlot(baseUrl, slot) {
+    if (!baseUrl) return null;
+    return baseUrl + '/storage/v1/object/public/photos/photo' + slot;
+  }
+
   /* ---------- Hidden admin editor ---------- */
   var editorTextarea = document.getElementById('editor-textarea');
   var editorMessage = document.getElementById('editor-message');
@@ -370,6 +442,24 @@
       editorTextarea.disabled = false;
       editorMessage.textContent = '';
       editorTextarea.focus();
+    });
+
+    storyMessage.textContent = 'Loading your story...';
+    storyMessage.classList.remove('is-success');
+    fetchTimeline().then(function (entries) {
+      renderStoryEditorRows(entries);
+      storyMessage.textContent = '';
+    });
+
+    getPhotoBaseUrl().then(function (baseUrl) {
+      document.querySelectorAll('.photo-editor-preview').forEach(function (img) {
+        var slot = img.getAttribute('data-photo-slot');
+        var url = photoUrlForSlot(baseUrl, slot);
+        if (url) {
+          img.onerror = function () { img.removeAttribute('src'); };
+          img.src = url;
+        }
+      });
     });
   }
 
@@ -418,6 +508,129 @@
   });
   editorPreviewModal.addEventListener('click', function (e) {
     if (e.target === editorPreviewModal) editorPreviewModal.hidden = true;
+  });
+
+  /* ---------- Hidden admin editor: Our Story So Far ---------- */
+  var storyEditorList = document.getElementById('story-editor-list');
+  var storySaveBtn = document.getElementById('story-save');
+  var storyMessage = document.getElementById('story-message');
+
+  function renderStoryEditorRows(entries) {
+    storyEditorList.innerHTML = '';
+    var list = Array.isArray(entries) && entries.length > 0 ? entries : CONFIG.offlineTimelineEntries;
+    list.forEach(function (entry, index) {
+      var row = document.createElement('div');
+      row.className = 'story-editor-row';
+
+      var iconInput = document.createElement('input');
+      iconInput.type = 'text';
+      iconInput.className = 'story-editor-icon';
+      iconInput.maxLength = 4;
+      iconInput.setAttribute('aria-label', 'Icon for entry ' + (index + 1));
+      iconInput.value = entry.icon || '';
+
+      var titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.className = 'story-editor-title';
+      titleInput.setAttribute('aria-label', 'Title for entry ' + (index + 1));
+      titleInput.value = entry.title || '';
+
+      var textArea = document.createElement('textarea');
+      textArea.className = 'story-editor-text';
+      textArea.rows = 2;
+      textArea.setAttribute('aria-label', 'Description for entry ' + (index + 1));
+      textArea.value = entry.text || '';
+
+      row.appendChild(iconInput);
+      row.appendChild(titleInput);
+      row.appendChild(textArea);
+      storyEditorList.appendChild(row);
+    });
+  }
+
+  function collectStoryEntries() {
+    var rows = storyEditorList.querySelectorAll('.story-editor-row');
+    var entries = [];
+    rows.forEach(function (row) {
+      var icon = row.querySelector('.story-editor-icon').value.trim();
+      var title = row.querySelector('.story-editor-title').value.trim();
+      var text = row.querySelector('.story-editor-text').value.trim();
+      if (title.length > 0 && text.length > 0) {
+        entries.push({ icon: icon, title: title, text: text });
+      }
+    });
+    return entries;
+  }
+
+  storySaveBtn.addEventListener('click', function () {
+    var entries = collectStoryEntries();
+    if (entries.length === 0) {
+      storyMessage.textContent = 'Add a title and description to at least one entry.';
+      storyMessage.classList.remove('is-success');
+      return;
+    }
+    storySaveBtn.disabled = true;
+    storyMessage.textContent = 'Saving...';
+    storyMessage.classList.remove('is-success');
+
+    fetch(CONFIG.apiBase + '/timeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: sessionAdminCode, entries: entries })
+    }).then(function (resp) {
+      storySaveBtn.disabled = false;
+      if (!resp.ok) throw new Error('save_failed');
+      storyMessage.textContent = 'Saved. Updated on the site immediately.';
+      storyMessage.classList.add('is-success');
+    }).catch(function () {
+      storySaveBtn.disabled = false;
+      storyMessage.textContent = "Couldn't save just now (no server connected in this preview). Try again once deployed.";
+      storyMessage.classList.remove('is-success');
+    });
+  });
+
+  /* ---------- Hidden admin editor: Photos ---------- */
+  document.querySelectorAll('.photo-editor-row').forEach(function (row) {
+    var slot = row.getAttribute('data-slot');
+    var input = row.querySelector('.photo-editor-input');
+    var status = row.querySelector('.photo-editor-status');
+    var preview = row.querySelector('.photo-editor-preview');
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+
+      status.textContent = 'Uploading...';
+      status.classList.remove('is-success');
+
+      var reader = new FileReader();
+      reader.onload = function () {
+        fetch(CONFIG.apiBase + '/photo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: sessionAdminCode,
+            slot: slot,
+            imageBase64: reader.result,
+            contentType: file.type
+          })
+        }).then(function (resp) {
+          if (!resp.ok) throw new Error('upload_failed');
+          status.textContent = 'Saved.';
+          status.classList.add('is-success');
+          preview.src = reader.result;
+          input.value = '';
+        }).catch(function () {
+          status.textContent = "Couldn't upload (no server connected in this preview).";
+          status.classList.remove('is-success');
+        });
+      };
+      reader.onerror = function () {
+        status.textContent = 'Could not read that file.';
+        status.classList.remove('is-success');
+      };
+      reader.readAsDataURL(file);
+    });
   });
 
   /* ============================================================
@@ -480,6 +693,18 @@
      4. SCROLL REVEAL (timeline, reasons, letter, gallery)
      ============================================================ */
   var scrollRevealInitialized = false;
+  var scrollRevealObserver = null;
+
+  // Usable for elements created after the initial pass (e.g. the
+  // timeline cards, rendered later once /api/timeline resolves).
+  function registerRevealTarget(el) {
+    if (scrollRevealObserver) {
+      scrollRevealObserver.observe(el);
+    } else {
+      el.classList.add('is-visible'); // no IntersectionObserver support
+    }
+  }
+
   function initScrollReveal() {
     if (scrollRevealInitialized) return;
     scrollRevealInitialized = true;
@@ -489,16 +714,16 @@
       targets.forEach(function (el) { el.classList.add('is-visible'); });
       return;
     }
-    var observer = new IntersectionObserver(function (entries) {
+    scrollRevealObserver = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
+          scrollRevealObserver.unobserve(entry.target);
         }
       });
     }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
 
-    targets.forEach(function (el) { observer.observe(el); });
+    targets.forEach(function (el) { scrollRevealObserver.observe(el); });
   }
 
   /* ============================================================
@@ -513,6 +738,26 @@
     var prevBtn = document.getElementById('lightbox-prev');
     var nextBtn = document.getElementById('lightbox-next');
     var currentIndex = 0;
+
+    // Photos live in Supabase Storage, uploaded through the admin
+    // editor. A slot with nothing uploaded yet 404s, which onerror
+    // turns into the existing tulip placeholder styling.
+    getPhotoBaseUrl().then(function (baseUrl) {
+      items.forEach(function (item) {
+        var img = item.querySelector('img[data-photo-slot]');
+        if (!img) return;
+        var slot = img.getAttribute('data-photo-slot');
+        var url = photoUrlForSlot(baseUrl, slot);
+        if (!url) {
+          item.classList.add('gallery__item--placeholder');
+          return;
+        }
+        img.addEventListener('error', function () {
+          item.classList.add('gallery__item--placeholder');
+        });
+        img.src = url;
+      });
+    });
 
     function openLightbox(index) {
       var item = items[index];
@@ -656,16 +901,16 @@
   })();
 
   /* ============================================================
-     7. "DO YOU LOVE ME?" CELEBRATION — checking the box launches a
-        full-screen fireworks display with "I love you" floating in
-        the background, nonstop, until closed or unchecked.
+     7. "DO YOU LOVE ME?" CELEBRATION — checking the box launches an
+        ambient fireworks display with "I love you" floating in the
+        background, nonstop, while she keeps scrolling/reading the
+        rest of the site. Non-blocking: no overlay, no dimming.
      ============================================================ */
   (function initLoveQuestion() {
     var checkbox = document.getElementById('love-checkbox');
     var overlay = document.getElementById('fireworks-overlay');
     var canvas = document.getElementById('fireworks-canvas');
     var textLayer = document.getElementById('fireworks-text-layer');
-    var closeBtn = document.getElementById('fireworks-close');
     var ctx = canvas.getContext('2d');
     var dpr = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -766,16 +1011,6 @@
 
     checkbox.addEventListener('change', function () {
       if (checkbox.checked) start(); else stop();
-    });
-    closeBtn.addEventListener('click', function () {
-      checkbox.checked = false;
-      stop();
-    });
-    overlay.addEventListener('click', function (e) {
-      if (e.target === overlay) {
-        checkbox.checked = false;
-        stop();
-      }
     });
   })();
 
