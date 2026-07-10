@@ -819,6 +819,18 @@ input:focus-visible {
 .music-player__volume { width: 70px; accent-color: var(--tulip-pink); }
 .music-player__title { font-size: 0.8rem; color: var(--soft-white); white-space: nowrap; }
 
+/* Audio-only YouTube embed. Kept in-layout (not display:none) so
+   browsers don't throttle/pause it, just moved off-screen. */
+.youtube-player-hidden {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 2px;
+  height: 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ============================================================
    RESPONSIVE BREAKPOINTS
    ============================================================ */
