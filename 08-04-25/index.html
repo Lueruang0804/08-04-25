@@ -162,6 +162,17 @@
 
         <p class="letter__signoff">Forever yours,</p>
         <p class="letter__signature">[Your Name]</p>
+
+        <div class="love-question">
+          <p class="love-question__prompt" id="love-question-prompt">Do you love me?</p>
+          <label class="love-question__checkbox">
+            <input type="checkbox" id="love-checkbox" aria-describedby="love-question-prompt">
+            <span class="love-question__box" aria-hidden="true">
+              <span class="love-question__heart">❤</span>
+            </span>
+            <span class="love-question__label">Yes</span>
+          </label>
+        </div>
       </div>
 
     </div>
@@ -297,6 +308,16 @@
   <!-- Audio-only YouTube embed: visually hidden, controlled entirely by
        the play/pause + volume UI above via the YouTube IFrame API. -->
   <div id="youtube-player" class="youtube-player-hidden" aria-hidden="true"></div>
+</div>
+
+<!-- ============================================================
+     "DO YOU LOVE ME?" CELEBRATION — full-screen fireworks + floating
+     "I love you" text, triggered by checking the love-question box.
+     ============================================================ -->
+<div id="fireworks-overlay" class="fireworks-overlay" hidden>
+  <canvas id="fireworks-canvas"></canvas>
+  <div id="fireworks-text-layer" class="fireworks-text-layer" aria-hidden="true"></div>
+  <button id="fireworks-close" class="fireworks-close" aria-label="Close">&times;</button>
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
