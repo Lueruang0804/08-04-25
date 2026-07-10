@@ -294,9 +294,12 @@
     <input id="music-volume" class="music-player__volume" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volume">
     <span class="music-player__title">Our Song</span>
   </div>
-  <audio id="music-audio" src="music/our-song.mp3" loop preload="none"></audio>
+  <!-- Audio-only YouTube embed: visually hidden, controlled entirely by
+       the play/pause + volume UI above via the YouTube IFrame API. -->
+  <div id="youtube-player" class="youtube-player-hidden" aria-hidden="true"></div>
 </div>
 
+<script src="https://www.youtube.com/iframe_api"></script>
 <script src="script.js"></script>
 </body>
 </html>
