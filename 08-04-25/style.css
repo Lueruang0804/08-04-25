@@ -533,6 +533,61 @@ input:focus-visible {
   color: var(--tulip-pink);
 }
 .photo-editor-status.is-success { color: var(--emerald-green); }
+.photo-editor-list--single {
+  grid-template-columns: minmax(140px, 220px);
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+/* ---------- Reasons editor rows ---------- */
+.reasons-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.reasons-editor-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.6rem;
+  align-items: start;
+}
+.reasons-editor-text {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 2px solid var(--glass-border);
+  background: rgba(248,248,248,0.05);
+  color: var(--soft-white);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.reasons-editor-text:focus-visible {
+  border-color: var(--lavender);
+  box-shadow: var(--glow-lavender);
+}
+.reasons-editor-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.reasons-editor-controls button {
+  width: 2rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: rgba(248,248,248,0.05);
+  color: var(--soft-white);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.reasons-editor-controls button:hover { background: rgba(248,248,248,0.15); }
+.reasons-editor-controls button:disabled { opacity: 0.3; cursor: default; }
+.reasons-delete { color: var(--tulip-red) !important; }
+.reasons-add-btn { display: block; margin: 0 auto 0.5rem; padding: 0.5rem 1.4rem; font-size: 0.9rem; }
 
 /* ---------- Generic reveal animations ---------- */
 .reveal-up {
@@ -669,101 +724,23 @@ input:focus-visible {
 .letter__signoff { margin-bottom: 0.2rem; font-style: italic; }
 .letter__signature { font-size: 1.3rem; color: var(--tulip-pink); }
 
-/* ---------- "Do you love me?" question ---------- */
-.love-question {
-  margin-top: 2.5rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--glass-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  text-align: center;
-}
-.love-question__prompt {
-  font-family: var(--font-serif);
-  font-size: clamp(1.3rem, 3vw, 1.7rem);
-  font-style: italic;
-  color: var(--soft-white);
-  margin: 0;
-}
-.love-question__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  cursor: pointer;
-}
-.love-question__checkbox input {
-  position: absolute;
-  width: 1px; height: 1px;
-  opacity: 0;
-}
-.love-question__box {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid var(--glass-border);
-  background: rgba(248, 248, 248, 0.05);
+/* ---------- Confirm gate ("Are you ready?") ---------- */
+.confirm-gate {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: border-color var(--dur-fast), box-shadow var(--dur-fast), transform var(--dur-fast) var(--ease-soft);
+  min-height: 50vh;
+  text-align: center;
 }
-.love-question__heart {
-  color: var(--tulip-red);
-  font-size: 1.3rem;
-  opacity: 0;
-  transform: scale(0.4);
-  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-soft);
+.confirm-gate__card {
+  max-width: 480px;
+  width: 100%;
 }
-.love-question__checkbox input:checked ~ .love-question__box {
-  border-color: var(--tulip-red);
-  box-shadow: var(--glow-red);
-  transform: scale(1.08);
-}
-.love-question__checkbox input:checked ~ .love-question__box .love-question__heart {
-  opacity: 1;
-  transform: scale(1);
-}
-.love-question__checkbox input:focus-visible ~ .love-question__box {
-  outline: 2px solid var(--tulip-yellow);
-  outline-offset: 3px;
-}
-.love-question__label {
-  font-size: 1rem;
-  color: var(--lavender);
+.confirm-gate__question {
+  font-size: clamp(1.6rem, 3.6vw, 2.2rem);
+  margin-bottom: 1.75rem;
 }
 
-/* ---------- "Do you love me?" celebration overlay ---------- */
-.fireworks-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-}
-#fireworks-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.fireworks-text-layer {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.fireworks-text-layer span {
-  position: absolute;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 600;
-  color: var(--tulip-pink);
-  text-shadow: var(--glow-pink);
-  white-space: nowrap;
-  opacity: 0;
-  animation: fx-rise linear forwards;
-}
 /* ---------- Photo gallery ---------- */
 .gallery__grid {
   display: grid;
@@ -916,29 +893,37 @@ input:focus-visible {
 .timeline__card p { margin-top: 0.6rem; color: rgba(248,248,248,0.85); }
 
 /* ---------- Reasons I love you ---------- */
-.reasons__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+.reasons__featured {
+  max-width: 480px;
+  margin: 0 auto 2.5rem;
+}
+.reasons__featured img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: var(--shadow-soft);
+  border: 1px solid var(--glass-border);
+}
+.reasons__featured img[src=""],
+.reasons__featured img:not([src]) {
+  display: none;
+}
+.reasons__list {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
   gap: 1.4rem;
 }
-.reasons__card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 18px;
-  backdrop-filter: blur(var(--glass-blur));
-  padding: 1.8rem 1.4rem;
+.reasons__line {
   text-align: center;
   font-family: var(--font-serif);
-  font-size: 1.15rem;
+  font-size: clamp(1.1rem, 2.2vw, 1.3rem);
   font-style: italic;
   color: var(--soft-white);
-  transition: transform var(--dur-fast) var(--ease-soft), box-shadow var(--dur-fast) var(--ease-soft);
+  margin: 0;
 }
-.reasons__card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--glow-pink);
-}
-.reasons__card p { margin: 0; }
 
 /* ---------- Footer ---------- */
 .footer {
@@ -1011,18 +996,6 @@ input:focus-visible {
 .music-player__volume-label { font-size: 0.7rem; color: var(--lavender); }
 .music-player__volume { width: 70px; accent-color: var(--tulip-pink); }
 .music-player__title { font-size: 0.8rem; color: var(--soft-white); white-space: nowrap; }
-
-/* Audio-only YouTube embed. Kept in-layout (not display:none) so
-   browsers don't throttle/pause it, just moved off-screen. */
-.youtube-player-hidden {
-  position: fixed;
-  left: -9999px;
-  top: -9999px;
-  width: 2px;
-  height: 2px;
-  opacity: 0;
-  pointer-events: none;
-}
 
 /* ============================================================
    RESPONSIVE BREAKPOINTS
