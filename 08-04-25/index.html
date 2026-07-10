@@ -80,26 +80,93 @@
 <!-- ============================================================
      SCREEN 2b — HIDDEN LETTER EDITOR (admin passcode only)
      ============================================================ -->
-<section id="editor" class="screen editor" aria-label="Letter editor" hidden>
+<section id="editor" class="screen editor" aria-label="Site editor" hidden>
   <div class="glass-card editor__card reveal-up">
     <p class="card-eyebrow">Welcome back</p>
-    <h2 class="editor__title">Edit the love letter</h2>
-    <p class="editor__hint">This becomes the letter she sees the next time she enters the viewing passcode.</p>
+    <h2 class="editor__title">Edit your site</h2>
 
-    <label for="editor-textarea" class="sr-only">Love letter text</label>
-    <textarea
-      id="editor-textarea"
-      class="editor__textarea"
-      rows="10"
-      placeholder="Write your letter here. Leave a blank line between paragraphs."
-    ></textarea>
+    <!-- ---------- Love letter ---------- -->
+    <div class="editor__section">
+      <h3 class="editor__section-title">Love Letter</h3>
+      <p class="editor__hint">This becomes the letter she sees the next time she enters the viewing passcode.</p>
 
-    <p id="editor-message" class="editor__message" role="status" aria-live="polite"></p>
+      <label for="editor-textarea" class="sr-only">Love letter text</label>
+      <textarea
+        id="editor-textarea"
+        class="editor__textarea"
+        rows="8"
+        placeholder="Write your letter here. Leave a blank line between paragraphs."
+      ></textarea>
 
-    <div class="editor__actions">
-      <button id="editor-cancel" class="btn btn--ghost" type="button">Cancel</button>
-      <button id="editor-preview" class="btn btn--ghost" type="button">Preview</button>
-      <button id="editor-save" class="btn btn--glow" type="button">Save</button>
+      <p id="editor-message" class="editor__message" role="status" aria-live="polite"></p>
+
+      <div class="editor__actions">
+        <button id="editor-preview" class="btn btn--ghost" type="button">Preview</button>
+        <button id="editor-save" class="btn btn--glow" type="button">Save Letter</button>
+      </div>
+    </div>
+
+    <!-- ---------- Our Story So Far ---------- -->
+    <div class="editor__section">
+      <h3 class="editor__section-title">Our Story So Far</h3>
+      <p class="editor__hint">Edit each milestone card on the timeline.</p>
+
+      <div id="story-editor-list" class="story-editor-list"></div>
+
+      <p id="story-message" class="editor__message" role="status" aria-live="polite"></p>
+
+      <div class="editor__actions">
+        <button id="story-save" class="btn btn--glow" type="button">Save Story</button>
+      </div>
+    </div>
+
+    <!-- ---------- Photos ---------- -->
+    <div class="editor__section">
+      <h3 class="editor__section-title">Photos</h3>
+      <p class="editor__hint">Choose a photo for any slot — it uploads right away.</p>
+
+      <div class="photo-editor-list">
+        <div class="photo-editor-row" data-slot="1">
+          <span class="photo-editor-label">Photo 1</span>
+          <img class="photo-editor-preview" data-photo-slot="1" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 1">
+          <span class="photo-editor-status"></span>
+        </div>
+        <div class="photo-editor-row" data-slot="2">
+          <span class="photo-editor-label">Photo 2</span>
+          <img class="photo-editor-preview" data-photo-slot="2" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 2">
+          <span class="photo-editor-status"></span>
+        </div>
+        <div class="photo-editor-row" data-slot="3">
+          <span class="photo-editor-label">Photo 3</span>
+          <img class="photo-editor-preview" data-photo-slot="3" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 3">
+          <span class="photo-editor-status"></span>
+        </div>
+        <div class="photo-editor-row" data-slot="4">
+          <span class="photo-editor-label">Photo 4</span>
+          <img class="photo-editor-preview" data-photo-slot="4" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 4">
+          <span class="photo-editor-status"></span>
+        </div>
+        <div class="photo-editor-row" data-slot="5">
+          <span class="photo-editor-label">Photo 5</span>
+          <img class="photo-editor-preview" data-photo-slot="5" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 5">
+          <span class="photo-editor-status"></span>
+        </div>
+        <div class="photo-editor-row" data-slot="6">
+          <span class="photo-editor-label">Photo 6</span>
+          <img class="photo-editor-preview" data-photo-slot="6" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload photo 6">
+          <span class="photo-editor-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="editor__actions editor__actions--footer">
+      <button id="editor-cancel" class="btn btn--ghost" type="button">Done</button>
     </div>
   </div>
 
@@ -183,40 +250,35 @@
     <h2 class="section-title reveal-on-scroll">Our Moments</h2>
     <p class="section-subtitle reveal-on-scroll">Little pieces of us, frozen in time.</p>
 
-    <!-- ============ CUSTOMIZE HERE: replace photo1.jpg...photo6.jpg and captions ============ -->
+    <!-- Images are uploaded through the admin editor and served from
+         Supabase Storage — script.js fills in each img's src on load.
+         Captions are still plain HTML, edit them directly here. -->
     <div class="gallery__grid">
       <figure class="gallery__item reveal-on-scroll" data-span="tall">
-        <img src="images/photo1.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="1" alt="A cherished memory together" loading="lazy">
         <figcaption>The day it all began 🌷</figcaption>
       </figure>
       <figure class="gallery__item reveal-on-scroll">
-        <img src="images/photo2.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="2" alt="A cherished memory together" loading="lazy">
         <figcaption>That smile of yours</figcaption>
       </figure>
       <figure class="gallery__item reveal-on-scroll">
-        <img src="images/photo3.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="3" alt="A cherished memory together" loading="lazy">
         <figcaption>One of my favorite days</figcaption>
       </figure>
       <figure class="gallery__item reveal-on-scroll" data-span="tall">
-        <img src="images/photo4.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="4" alt="A cherished memory together" loading="lazy">
         <figcaption>Us, being us</figcaption>
       </figure>
       <figure class="gallery__item reveal-on-scroll">
-        <img src="images/photo5.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="5" alt="A cherished memory together" loading="lazy">
         <figcaption>A moment I never want to forget</figcaption>
       </figure>
       <figure class="gallery__item reveal-on-scroll">
-        <img src="images/photo6.jpg" alt="A cherished memory together" loading="lazy"
-             onerror="this.closest('figure').classList.add('gallery__item--placeholder')">
+        <img data-photo-slot="6" alt="A cherished memory together" loading="lazy">
         <figcaption>Here's to many more</figcaption>
       </figure>
     </div>
-    <!-- ============ END CUSTOMIZE ============ -->
 
     <!-- Lightbox -->
     <div id="lightbox" class="lightbox" hidden>
@@ -233,35 +295,10 @@
     <h2 class="section-title reveal-on-scroll">Our Story So Far</h2>
     <p class="section-subtitle reveal-on-scroll">Every chapter, worth remembering.</p>
 
-    <!-- ============ CUSTOMIZE HERE: timeline entries ============ -->
-    <div class="timeline__track">
-      <article class="timeline__card reveal-on-scroll">
-        <span class="timeline__icon">❤️</span>
-        <h3>The Day We Met</h3>
-        <p>[Describe the day your story began.]</p>
-      </article>
-      <article class="timeline__card reveal-on-scroll">
-        <span class="timeline__icon">🌷</span>
-        <h3>Our First Date</h3>
-        <p>[Describe your first date together.]</p>
-      </article>
-      <article class="timeline__card reveal-on-scroll">
-        <span class="timeline__icon">📸</span>
-        <h3>Our Favorite Memory</h3>
-        <p>[Describe a memory that means the world to you.]</p>
-      </article>
-      <article class="timeline__card reveal-on-scroll">
-        <span class="timeline__icon">🎂</span>
-        <h3>Birthdays Together</h3>
-        <p>[Describe celebrating birthdays as a couple.]</p>
-      </article>
-      <article class="timeline__card timeline__card--today reveal-on-scroll">
-        <span class="timeline__icon">💕</span>
-        <h3>Today — Our Anniversary</h3>
-        <p>And here we are, still writing our story together.</p>
-      </article>
-    </div>
-    <!-- ============ END CUSTOMIZE ============ -->
+    <!-- Populated from the saved story entries (via /api/timeline),
+         editable through the admin editor. Falls back to placeholder
+         text if not fetched yet or the API is unreachable. -->
+    <div id="timeline-track" class="timeline__track" aria-live="polite"></div>
   </section>
 
   <!-- ---------- REASONS I LOVE YOU ---------- -->
@@ -317,7 +354,6 @@
 <div id="fireworks-overlay" class="fireworks-overlay" hidden>
   <canvas id="fireworks-canvas"></canvas>
   <div id="fireworks-text-layer" class="fireworks-text-layer" aria-hidden="true"></div>
-  <button id="fireworks-close" class="fireworks-close" aria-label="Close">&times;</button>
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
