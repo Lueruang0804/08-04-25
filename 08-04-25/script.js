@@ -20,8 +20,6 @@
   var CONFIG = {
     galleryCaptionFallback: 'A cherished moment',
     apiBase: '/api',
-    // "Our Song" — swap this for a different YouTube video ID any time.
-    youtubeVideoId: 'hkLVI3DoeAE',
     offlineViewPasscode: '00-00-00',
     offlineAdminPasscode: '00000',
     offlineLetter:
@@ -34,6 +32,13 @@
       { icon: '📸', title: 'Our Favorite Memory', text: '[Describe a memory that means the world to you.]' },
       { icon: '🎂', title: 'Birthdays Together', text: '[Describe celebrating birthdays as a couple.]' },
       { icon: '💕', title: 'Today — Our Anniversary', text: 'And here we are, still writing our story together.' }
+    ],
+    offlineReasonsEntries: [
+      'I love the way you always make me smile.',
+      'I love how you always support me.',
+      'I love how you make every day feel special.',
+      'I love your kindness.',
+      'I love every little thing about you.'
     ]
   };
 
@@ -321,7 +326,11 @@
           window.setTimeout(function () { mainEl.classList.remove('screen-fade-in'); }, 1300);
           initScrollReveal();
           loadLetterIntoPage();
+          // Gallery/Timeline/Reasons/Footer stay hidden until she
+          // confirms on the gate below — but their data prefetches
+          // now, in the background, so the reveal feels instant.
           loadTimelineIntoPage();
+          loadReasonsIntoPage();
           if (startMusicExperience) startMusicExperience();
         }, prefersReducedMotion ? 0 : 900);
       }, prefersReducedMotion ? 0 : 700);
@@ -363,6 +372,40 @@
       renderLetterParagraphs(container, content);
     });
   }
+
+  /* ---------- Confirm gate: "Are you ready?" ----------
+     Gallery, Timeline, Reasons and the Footer stay `hidden` (not just
+     visually hidden — unreachable by scroll) until she clicks through
+     here. Their data already prefetched in the background above, so
+     the reveal is instant. */
+  (function initConfirmGate() {
+    var gateSection = document.getElementById('confirm-gate');
+    var readyBtn = document.getElementById('confirm-ready-btn');
+    var gallerySection = document.getElementById('gallery');
+    var timelineSection = document.getElementById('timeline');
+    var reasonsSection = document.getElementById('reasons');
+    var footerEl = document.querySelector('.footer');
+
+    readyBtn.addEventListener('click', function () {
+      readyBtn.disabled = true;
+      gateSection.classList.add('screen-fade-out');
+      spawnHeartBurst();
+
+      window.setTimeout(function () {
+        gateSection.hidden = true;
+        gallerySection.hidden = false;
+        timelineSection.hidden = false;
+        reasonsSection.hidden = false;
+        footerEl.hidden = false;
+
+        if (prefersReducedMotion) {
+          gallerySection.scrollIntoView({ block: 'start' });
+        } else {
+          gallerySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, prefersReducedMotion ? 0 : 550);
+    });
+  })();
 
   /* ---------- Our Story So Far (timeline) ---------- */
   function renderTimelineTrack(container, entries) {
@@ -408,11 +451,11 @@
     });
   }
 
-  /* ---------- Gallery photo URLs (served from Supabase Storage) ---------- */
-  var photoBaseUrlPromise = null;
-  function getPhotoBaseUrl() {
-    if (!photoBaseUrlPromise) {
-      photoBaseUrlPromise = fetch(CONFIG.apiBase + '/config')
+  /* ---------- Supabase Storage URLs (photos + music share this) ---------- */
+  var supabaseBaseUrlPromise = null;
+  function getSupabaseBaseUrl() {
+    if (!supabaseBaseUrlPromise) {
+      supabaseBaseUrlPromise = fetch(CONFIG.apiBase + '/config')
         .then(function (resp) {
           if (!resp.ok) throw new Error('config_failed');
           return resp.json();
@@ -420,12 +463,55 @@
         .then(function (data) { return data.supabaseUrl || null; })
         .catch(function () { return null; });
     }
-    return photoBaseUrlPromise;
+    return supabaseBaseUrlPromise;
   }
 
   function photoUrlForSlot(baseUrl, slot) {
     if (!baseUrl) return null;
     return baseUrl + '/storage/v1/object/public/photos/photo' + slot;
+  }
+
+  function musicUrl(baseUrl) {
+    if (!baseUrl) return null;
+    return baseUrl + '/storage/v1/object/public/music/our-song';
+  }
+
+  /* ---------- Reasons I Love You: featured photo + text list ---------- */
+  function renderReasonsList(container, entries) {
+    container.innerHTML = '';
+    var list = Array.isArray(entries) && entries.length > 0 ? entries : CONFIG.offlineReasonsEntries;
+    list.forEach(function (text) {
+      var p = document.createElement('p');
+      p.className = 'reasons__line reveal-on-scroll';
+      p.textContent = '❤ ' + text;
+      container.appendChild(p);
+      registerRevealTarget(p);
+    });
+  }
+
+  function fetchReasons() {
+    return fetch(CONFIG.apiBase + '/reasons')
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('fetch_failed');
+        return resp.json();
+      })
+      .then(function (data) { return Array.isArray(data.entries) ? data.entries : CONFIG.offlineReasonsEntries; })
+      .catch(function () { return CONFIG.offlineReasonsEntries; });
+  }
+
+  function loadReasonsIntoPage() {
+    var container = document.getElementById('reasons-list');
+    fetchReasons().then(function (entries) {
+      renderReasonsList(container, entries);
+    });
+
+    var img = document.getElementById('reasons-featured-photo');
+    getSupabaseBaseUrl().then(function (baseUrl) {
+      var url = photoUrlForSlot(baseUrl, 'featured');
+      if (!url) return;
+      img.addEventListener('error', function () { img.removeAttribute('src'); });
+      img.src = url;
+    });
   }
 
   /* ---------- Hidden admin editor ---------- */
@@ -457,7 +543,14 @@
       storyMessage.textContent = '';
     });
 
-    getPhotoBaseUrl().then(function (baseUrl) {
+    reasonsMessage.textContent = 'Loading your reasons...';
+    reasonsMessage.classList.remove('is-success');
+    fetchReasons().then(function (entries) {
+      renderReasonsEditorRows(entries);
+      reasonsMessage.textContent = '';
+    });
+
+    getSupabaseBaseUrl().then(function (baseUrl) {
       document.querySelectorAll('.photo-editor-preview').forEach(function (img) {
         var slot = img.getAttribute('data-photo-slot');
         var url = photoUrlForSlot(baseUrl, slot);
@@ -638,6 +731,154 @@
       reader.readAsDataURL(file);
     });
   });
+  // Note: the "featured" reasons photo uses this exact same generic
+  // wiring above — its row has data-slot="featured", which the code
+  // sends straight through to /api/photo unchanged.
+
+  /* ---------- Hidden admin editor: Reasons I Love You ---------- */
+  var reasonsEditorList = document.getElementById('reasons-editor-list');
+  var reasonsAddBtn = document.getElementById('reasons-add-btn');
+  var reasonsSaveBtn = document.getElementById('reasons-save');
+  var reasonsMessage = document.getElementById('reasons-message');
+
+  function buildReasonsEditorRow(text) {
+    var row = document.createElement('div');
+    row.className = 'reasons-editor-row';
+
+    var textArea = document.createElement('textarea');
+    textArea.className = 'reasons-editor-text';
+    textArea.rows = 2;
+    textArea.setAttribute('aria-label', 'Reason');
+    textArea.value = text || '';
+
+    var controls = document.createElement('div');
+    controls.className = 'reasons-editor-controls';
+
+    var upBtn = document.createElement('button');
+    upBtn.type = 'button';
+    upBtn.className = 'reasons-move-up';
+    upBtn.setAttribute('aria-label', 'Move up');
+    upBtn.textContent = '↑';
+    upBtn.addEventListener('click', function () {
+      var prev = row.previousElementSibling;
+      if (prev) reasonsEditorList.insertBefore(row, prev);
+    });
+
+    var downBtn = document.createElement('button');
+    downBtn.type = 'button';
+    downBtn.className = 'reasons-move-down';
+    downBtn.setAttribute('aria-label', 'Move down');
+    downBtn.textContent = '↓';
+    downBtn.addEventListener('click', function () {
+      var next = row.nextElementSibling;
+      if (next) reasonsEditorList.insertBefore(next, row);
+    });
+
+    var deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'reasons-delete';
+    deleteBtn.setAttribute('aria-label', 'Delete this reason');
+    deleteBtn.textContent = '×';
+    deleteBtn.addEventListener('click', function () {
+      row.parentNode.removeChild(row);
+    });
+
+    controls.appendChild(upBtn);
+    controls.appendChild(downBtn);
+    controls.appendChild(deleteBtn);
+    row.appendChild(textArea);
+    row.appendChild(controls);
+    return row;
+  }
+
+  function renderReasonsEditorRows(entries) {
+    reasonsEditorList.innerHTML = '';
+    var list = Array.isArray(entries) && entries.length > 0 ? entries : CONFIG.offlineReasonsEntries;
+    list.forEach(function (text) {
+      reasonsEditorList.appendChild(buildReasonsEditorRow(text));
+    });
+  }
+
+  function collectReasonsEntries() {
+    var rows = reasonsEditorList.querySelectorAll('.reasons-editor-row');
+    var entries = [];
+    rows.forEach(function (row) {
+      var text = row.querySelector('.reasons-editor-text').value.trim();
+      if (text.length > 0) entries.push(text);
+    });
+    return entries;
+  }
+
+  reasonsAddBtn.addEventListener('click', function () {
+    var row = buildReasonsEditorRow('');
+    reasonsEditorList.appendChild(row);
+    row.querySelector('.reasons-editor-text').focus();
+  });
+
+  reasonsSaveBtn.addEventListener('click', function () {
+    var entries = collectReasonsEntries();
+    if (entries.length === 0) {
+      reasonsMessage.textContent = 'Add at least one reason before saving.';
+      reasonsMessage.classList.remove('is-success');
+      return;
+    }
+    reasonsSaveBtn.disabled = true;
+    reasonsMessage.textContent = 'Saving...';
+    reasonsMessage.classList.remove('is-success');
+
+    fetch(CONFIG.apiBase + '/reasons', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: sessionAdminCode, entries: entries })
+    }).then(function (resp) {
+      reasonsSaveBtn.disabled = false;
+      if (!resp.ok) throw new Error('save_failed');
+      reasonsMessage.textContent = 'Saved. Updated on the site immediately.';
+      reasonsMessage.classList.add('is-success');
+    }).catch(function () {
+      reasonsSaveBtn.disabled = false;
+      reasonsMessage.textContent = "Couldn't save just now (no server connected in this preview). Try again once deployed.";
+      reasonsMessage.classList.remove('is-success');
+    });
+  });
+
+  /* ---------- Hidden admin editor: Music ---------- */
+  var musicUploadInput = document.getElementById('music-upload-input');
+  var musicUploadMessage = document.getElementById('music-upload-message');
+
+  musicUploadInput.addEventListener('change', function () {
+    var file = musicUploadInput.files && musicUploadInput.files[0];
+    if (!file) return;
+
+    musicUploadMessage.textContent = 'Uploading...';
+    musicUploadMessage.classList.remove('is-success');
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      fetch(CONFIG.apiBase + '/music', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: sessionAdminCode,
+          audioBase64: reader.result,
+          contentType: file.type
+        })
+      }).then(function (resp) {
+        if (!resp.ok) throw new Error('upload_failed');
+        musicUploadMessage.textContent = 'Saved. This is now the background song.';
+        musicUploadMessage.classList.add('is-success');
+        musicUploadInput.value = '';
+      }).catch(function () {
+        musicUploadMessage.textContent = "Couldn't upload (no server connected in this preview).";
+        musicUploadMessage.classList.remove('is-success');
+      });
+    };
+    reader.onerror = function () {
+      musicUploadMessage.textContent = 'Could not read that file.';
+      musicUploadMessage.classList.remove('is-success');
+    };
+    reader.readAsDataURL(file);
+  });
 
   /* ============================================================
      3. FLOATING FX: hearts, petals, sparkles
@@ -748,7 +989,7 @@
     // Photos live in Supabase Storage, uploaded through the admin
     // editor. A slot with nothing uploaded yet 404s, which onerror
     // turns into the existing tulip placeholder styling.
-    getPhotoBaseUrl().then(function (baseUrl) {
+    getSupabaseBaseUrl().then(function (baseUrl) {
       items.forEach(function (item) {
         var img = item.querySelector('img[data-photo-slot]');
         if (!img) return;
@@ -822,22 +1063,21 @@
   })();
 
   /* ============================================================
-     6. MUSIC PLAYER — "Our Song" plays via a visually-hidden YouTube
-        embed (see CONFIG.youtubeVideoId), driven by the YouTube
-        IFrame API. It starts itself automatically the moment she
-        unlocks the site (see startMusicExperience, called from the
-        passcode-success branch above) — no Play button needed.
+     6. MUSIC PLAYER — "Our Song" plays from a hosted audio file,
+        uploaded through the admin editor and stored in Supabase
+        Storage (see api/music.js). It starts itself automatically
+        the moment she unlocks the site (see startMusicExperience,
+        called from the passcode-success branch above) — no Play
+        button needed.
 
-        Autoplay strategy (browsers block unmuted autoplay unless a
-        recent user gesture is attached, and there's no reliable way
-        to detect that in advance):
-          1. Try a real, unmuted play at volume 0.
-          2. ~600ms later, check whether it's actually playing.
-             If yes: fade the volume up — done.
-             If no (blocked): switch to a muted autoplay (browsers
-             always allow this), and arm a one-time listener for the
-             visitor's first click/tap/keypress anywhere on the page,
-             which unmutes and fades in at that moment.
+        Autoplay strategy: call audio.play() (unmuted, volume 0) and
+        use the real Promise it returns to know immediately whether
+        the browser allowed it:
+          - Resolved: fade the volume up — done.
+          - Rejected (blocked): arm a one-time listener for the
+            visitor's first click/tap/keypress anywhere on the page,
+            which plays + fades in at that moment (always allowed,
+            since it's a direct response to a real user gesture).
         Either path ends the same way: audio ramps in from silence,
         never a hard jump to full volume.
 
@@ -851,13 +1091,13 @@
     var playBtn = document.getElementById('music-play');
     var playIcon = document.getElementById('music-play-icon');
     var volumeSlider = document.getElementById('music-volume');
+    var audio = document.getElementById('bg-audio');
 
     var VOLUME_STORAGE_KEY = 'anniversary-music-volume';
     var DEFAULT_VOLUME = 0.35;
 
-    var ytPlayer = null;
-    var playerReady = false;
     var isPlaying = false;
+    var srcReady = false;
     var autoStartRequested = false;
     var autoStartAttempted = false;
     var fadeTimer = null;
@@ -869,6 +1109,7 @@
 
     var targetVolume = loadStoredVolume();
     volumeSlider.value = String(targetVolume);
+    audio.volume = 0;
 
     function setPlayingUI(playing) {
       isPlaying = playing;
@@ -885,7 +1126,7 @@
     function fadeVolumeTo(target, durationMs) {
       stopFade();
       if (prefersReducedMotion) {
-        ytPlayer.setVolume(Math.round(target * 100));
+        audio.volume = target;
         return;
       }
       var steps = 24;
@@ -893,7 +1134,7 @@
       var i = 0;
       fadeTimer = window.setInterval(function () {
         i++;
-        ytPlayer.setVolume(Math.round(target * 100 * (i / steps)));
+        audio.volume = Math.min(target, target * (i / steps));
         if (i >= steps) stopFade();
       }, stepTime);
     }
@@ -902,9 +1143,10 @@
       var events = ['click', 'touchstart', 'keydown'];
       function onFirstInteraction() {
         events.forEach(function (evt) { document.removeEventListener(evt, onFirstInteraction); });
-        ytPlayer.unMute();
-        ytPlayer.playVideo();
-        fadeVolumeTo(targetVolume, 2000);
+        audio.volume = 0;
+        audio.play().then(function () {
+          fadeVolumeTo(targetVolume, 2000);
+        }).catch(function () { /* still blocked somehow — leave it to the manual button */ });
       }
       events.forEach(function (evt) {
         document.addEventListener(evt, onFirstInteraction, { once: true, passive: true });
@@ -912,66 +1154,46 @@
     }
 
     function beginAutoplayAttempt() {
-      if (autoStartAttempted) return;
+      if (autoStartAttempted || !srcReady) return;
       autoStartAttempted = true;
 
-      ytPlayer.setVolume(0);
-      ytPlayer.playVideo();
-
-      window.setTimeout(function () {
-        var state = ytPlayer.getPlayerState();
-        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
-          fadeVolumeTo(targetVolume, 2500);
-        } else {
-          // Blocked — fall back to a muted autoplay (always allowed),
-          // then unmute + fade in on her first interaction.
-          ytPlayer.mute();
-          ytPlayer.playVideo();
-          armFirstInteractionFallback();
-        }
-      }, 600);
+      audio.volume = 0;
+      audio.play().then(function () {
+        fadeVolumeTo(targetVolume, 2500);
+      }).catch(function () {
+        armFirstInteractionFallback();
+      });
     }
 
     startMusicExperience = function () {
-      if (!playerReady) {
+      if (!srcReady) {
         autoStartRequested = true;
         return;
       }
       beginAutoplayAttempt();
     };
 
-    window.onYouTubeIframeAPIReady = function () {
-      ytPlayer = new YT.Player('youtube-player', {
-        videoId: CONFIG.youtubeVideoId,
-        playerVars: {
-          autoplay: 0,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          // Looping a single video via the IFrame API requires repeating
-          // it as its own "playlist".
-          loop: 1,
-          playlist: CONFIG.youtubeVideoId
-        },
-        events: {
-          onReady: function () {
-            playerReady = true;
-            ytPlayer.setVolume(0);
-            if (autoStartRequested) beginAutoplayAttempt();
-          },
-          onStateChange: function (event) {
-            if (event.data === YT.PlayerState.PLAYING) setPlayingUI(true);
-            else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setPlayingUI(false);
-          },
-          onError: function () {
-            playBtn.disabled = true;
-            playBtn.setAttribute('aria-label', "Couldn't load the song");
-          }
-        }
-      });
-    };
+    // Point <audio> at the uploaded file once we know the Supabase
+    // project URL. If nothing's been uploaded yet, the resulting
+    // 404 fires the `error` handler below, which degrades gracefully.
+    getSupabaseBaseUrl().then(function (baseUrl) {
+      var url = musicUrl(baseUrl);
+      if (!url) {
+        playBtn.disabled = true;
+        playBtn.setAttribute('aria-label', 'No song uploaded yet');
+        return;
+      }
+      audio.src = url;
+      srcReady = true;
+      if (autoStartRequested) beginAutoplayAttempt();
+    });
+
+    audio.addEventListener('playing', function () { setPlayingUI(true); });
+    audio.addEventListener('pause', function () { setPlayingUI(false); });
+    audio.addEventListener('error', function () {
+      playBtn.disabled = true;
+      playBtn.setAttribute('aria-label', 'No song uploaded yet');
+    });
 
     toggleBtn.addEventListener('click', function () {
       var isOpen = !panel.hidden;
@@ -980,146 +1202,26 @@
     });
 
     playBtn.addEventListener('click', function () {
-      if (!playerReady) {
-        autoStartRequested = true;
-        return;
-      }
+      if (!srcReady) return;
       stopFade();
       if (isPlaying) {
-        ytPlayer.pauseVideo();
+        audio.pause();
       } else {
-        ytPlayer.unMute();
-        ytPlayer.setVolume(Math.round(targetVolume * 100));
-        ytPlayer.playVideo();
+        audio.volume = targetVolume;
+        audio.play().catch(function () {});
       }
     });
 
     volumeSlider.addEventListener('input', function () {
       targetVolume = parseFloat(volumeSlider.value);
       window.localStorage.setItem(VOLUME_STORAGE_KEY, String(targetVolume));
-      if (playerReady) {
-        stopFade();
-        ytPlayer.setVolume(Math.round(targetVolume * 100));
-      }
+      stopFade();
+      audio.volume = targetVolume;
     });
   })();
 
   /* ============================================================
-     7. "DO YOU LOVE ME?" CELEBRATION — checking the box launches an
-        ambient fireworks display with "I love you" floating in the
-        background, nonstop, while she keeps scrolling/reading the
-        rest of the site. Non-blocking: no overlay, no dimming.
-     ============================================================ */
-  (function initLoveQuestion() {
-    var checkbox = document.getElementById('love-checkbox');
-    var overlay = document.getElementById('fireworks-overlay');
-    var canvas = document.getElementById('fireworks-canvas');
-    var textLayer = document.getElementById('fireworks-text-layer');
-    var ctx = canvas.getContext('2d');
-    var dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    var palette = ['#F7B6C2', '#E63946', '#FFD166', '#B8A8E3', '#2D6A4F', '#F8F8F8'];
-    var fireworks = [];
-    var rafId = null;
-    var fireworkTimer = null;
-    var textTimer = null;
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = window.innerWidth + 'px';
-      canvas.style.height = window.innerHeight + 'px';
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-
-    function spawnFirework() {
-      var w = window.innerWidth, h = window.innerHeight;
-      var x = w * (0.15 + Math.random() * 0.7);
-      var y = h * (0.15 + Math.random() * 0.4);
-      var color = palette[Math.floor(Math.random() * palette.length)];
-      var count = 28 + Math.floor(Math.random() * 16);
-      var particles = [];
-      for (var i = 0; i < count; i++) {
-        var angle = (Math.PI * 2 * i) / count + Math.random() * 0.2;
-        var speed = 1.5 + Math.random() * 2.5;
-        particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1 });
-      }
-      fireworks.push({ particles: particles, color: color });
-    }
-
-    function step() {
-      var w = window.innerWidth, h = window.innerHeight;
-      ctx.clearRect(0, 0, w, h);
-      for (var i = fireworks.length - 1; i >= 0; i--) {
-        var fw = fireworks[i];
-        var alive = false;
-        for (var j = 0; j < fw.particles.length; j++) {
-          var p = fw.particles[j];
-          if (p.life <= 0) continue;
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.045; // gravity
-          p.life -= 0.014;
-          if (p.life > 0) {
-            alive = true;
-            ctx.beginPath();
-            ctx.globalAlpha = Math.max(p.life, 0);
-            ctx.fillStyle = fw.color;
-            ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        if (!alive) fireworks.splice(i, 1);
-      }
-      ctx.globalAlpha = 1;
-      rafId = requestAnimationFrame(step);
-    }
-
-    function spawnLoveText() {
-      var el = document.createElement('span');
-      el.textContent = 'I love you ❤';
-      el.style.left = (5 + Math.random() * 80) + 'vw';
-      el.style.top = (40 + Math.random() * 20) + 'vh';
-      el.style.fontSize = (1.1 + Math.random() * 1.4) + 'rem';
-      el.style.animationDuration = (5 + Math.random() * 3) + 's';
-      textLayer.appendChild(el);
-      window.setTimeout(function () {
-        if (el.parentNode) el.parentNode.removeChild(el);
-      }, 9000);
-    }
-
-    function start() {
-      overlay.hidden = false;
-      resizeCanvas();
-      spawnFirework();
-      spawnLoveText();
-      if (prefersReducedMotion) return; // one calm burst + text, no loop
-      rafId = requestAnimationFrame(step);
-      fireworkTimer = window.setInterval(spawnFirework, 700);
-      textTimer = window.setInterval(spawnLoveText, 900);
-      window.addEventListener('resize', resizeCanvas);
-    }
-
-    function stop() {
-      overlay.hidden = true;
-      if (rafId) cancelAnimationFrame(rafId);
-      if (fireworkTimer) window.clearInterval(fireworkTimer);
-      if (textTimer) window.clearInterval(textTimer);
-      rafId = null;
-      fireworkTimer = null;
-      textTimer = null;
-      fireworks = [];
-      textLayer.innerHTML = '';
-      window.removeEventListener('resize', resizeCanvas);
-    }
-
-    checkbox.addEventListener('change', function () {
-      if (checkbox.checked) start(); else stop();
-    });
-  })();
-
-  /* ============================================================
-     8. FOOTER YEAR
+     7. FOOTER YEAR
      ============================================================ */
   document.getElementById('footer-year').textContent = new Date().getFullYear();
 
