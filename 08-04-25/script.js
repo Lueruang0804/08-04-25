@@ -41,6 +41,11 @@
   // the admin passcode with each request. Never written to storage.
   var sessionAdminCode = null;
 
+  // Assigned inside the music player IIFE (section 6, below); called from
+  // the passcode-success branch once she unlocks the site, so the two
+  // need a shared reference declared up here.
+  var startMusicExperience = null;
+
   var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var isTouchDevice = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
@@ -317,6 +322,7 @@
           initScrollReveal();
           loadLetterIntoPage();
           loadTimelineIntoPage();
+          if (startMusicExperience) startMusicExperience();
         }, prefersReducedMotion ? 0 : 900);
       }, prefersReducedMotion ? 0 : 700);
     });
@@ -818,10 +824,26 @@
   /* ============================================================
      6. MUSIC PLAYER — "Our Song" plays via a visually-hidden YouTube
         embed (see CONFIG.youtubeVideoId), driven by the YouTube
-        IFrame API, but controlled entirely through our own play/pause
-        + volume UI. The <script src="https://www.youtube.com/iframe_api">
-        tag in index.html loads before this file and calls
-        window.onYouTubeIframeAPIReady once it's ready.
+        IFrame API. It starts itself automatically the moment she
+        unlocks the site (see startMusicExperience, called from the
+        passcode-success branch above) — no Play button needed.
+
+        Autoplay strategy (browsers block unmuted autoplay unless a
+        recent user gesture is attached, and there's no reliable way
+        to detect that in advance):
+          1. Try a real, unmuted play at volume 0.
+          2. ~600ms later, check whether it's actually playing.
+             If yes: fade the volume up — done.
+             If no (blocked): switch to a muted autoplay (browsers
+             always allow this), and arm a one-time listener for the
+             visitor's first click/tap/keypress anywhere on the page,
+             which unmutes and fades in at that moment.
+        Either path ends the same way: audio ramps in from silence,
+        never a hard jump to full volume.
+
+        The floating play/pause button and volume slider still work
+        for manual control afterward; they're just no longer required
+        to hear anything in the first place.
      ============================================================ */
   (function initMusicPlayer() {
     var toggleBtn = document.getElementById('music-toggle');
@@ -830,15 +852,93 @@
     var playIcon = document.getElementById('music-play-icon');
     var volumeSlider = document.getElementById('music-volume');
 
+    var VOLUME_STORAGE_KEY = 'anniversary-music-volume';
+    var DEFAULT_VOLUME = 0.35;
+
     var ytPlayer = null;
     var playerReady = false;
-    var playRequested = false;
     var isPlaying = false;
+    var autoStartRequested = false;
+    var autoStartAttempted = false;
+    var fadeTimer = null;
+
+    function loadStoredVolume() {
+      var stored = parseFloat(window.localStorage.getItem(VOLUME_STORAGE_KEY));
+      return (!isNaN(stored) && stored >= 0 && stored <= 1) ? stored : DEFAULT_VOLUME;
+    }
+
+    var targetVolume = loadStoredVolume();
+    volumeSlider.value = String(targetVolume);
 
     function setPlayingUI(playing) {
       isPlaying = playing;
       playIcon.textContent = playing ? '❚❚' : '▶';
     }
+
+    function stopFade() {
+      if (fadeTimer) {
+        window.clearInterval(fadeTimer);
+        fadeTimer = null;
+      }
+    }
+
+    function fadeVolumeTo(target, durationMs) {
+      stopFade();
+      if (prefersReducedMotion) {
+        ytPlayer.setVolume(Math.round(target * 100));
+        return;
+      }
+      var steps = 24;
+      var stepTime = durationMs / steps;
+      var i = 0;
+      fadeTimer = window.setInterval(function () {
+        i++;
+        ytPlayer.setVolume(Math.round(target * 100 * (i / steps)));
+        if (i >= steps) stopFade();
+      }, stepTime);
+    }
+
+    function armFirstInteractionFallback() {
+      var events = ['click', 'touchstart', 'keydown'];
+      function onFirstInteraction() {
+        events.forEach(function (evt) { document.removeEventListener(evt, onFirstInteraction); });
+        ytPlayer.unMute();
+        ytPlayer.playVideo();
+        fadeVolumeTo(targetVolume, 2000);
+      }
+      events.forEach(function (evt) {
+        document.addEventListener(evt, onFirstInteraction, { once: true, passive: true });
+      });
+    }
+
+    function beginAutoplayAttempt() {
+      if (autoStartAttempted) return;
+      autoStartAttempted = true;
+
+      ytPlayer.setVolume(0);
+      ytPlayer.playVideo();
+
+      window.setTimeout(function () {
+        var state = ytPlayer.getPlayerState();
+        if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+          fadeVolumeTo(targetVolume, 2500);
+        } else {
+          // Blocked — fall back to a muted autoplay (always allowed),
+          // then unmute + fade in on her first interaction.
+          ytPlayer.mute();
+          ytPlayer.playVideo();
+          armFirstInteractionFallback();
+        }
+      }, 600);
+    }
+
+    startMusicExperience = function () {
+      if (!playerReady) {
+        autoStartRequested = true;
+        return;
+      }
+      beginAutoplayAttempt();
+    };
 
     window.onYouTubeIframeAPIReady = function () {
       ytPlayer = new YT.Player('youtube-player', {
@@ -858,10 +958,8 @@
         events: {
           onReady: function () {
             playerReady = true;
-            ytPlayer.setVolume(Math.round(parseFloat(volumeSlider.value) * 100));
-            if (playRequested) {
-              ytPlayer.playVideo();
-            }
+            ytPlayer.setVolume(0);
+            if (autoStartRequested) beginAutoplayAttempt();
           },
           onStateChange: function (event) {
             if (event.data === YT.PlayerState.PLAYING) setPlayingUI(true);
@@ -883,20 +981,26 @@
 
     playBtn.addEventListener('click', function () {
       if (!playerReady) {
-        // API/player still loading — remember the click and honor it
-        // as soon as onReady fires.
-        playRequested = true;
+        autoStartRequested = true;
         return;
       }
+      stopFade();
       if (isPlaying) {
         ytPlayer.pauseVideo();
       } else {
+        ytPlayer.unMute();
+        ytPlayer.setVolume(Math.round(targetVolume * 100));
         ytPlayer.playVideo();
       }
     });
 
     volumeSlider.addEventListener('input', function () {
-      if (playerReady) ytPlayer.setVolume(Math.round(parseFloat(volumeSlider.value) * 100));
+      targetVolume = parseFloat(volumeSlider.value);
+      window.localStorage.setItem(VOLUME_STORAGE_KEY, String(targetVolume));
+      if (playerReady) {
+        stopFade();
+        ytPlayer.setVolume(Math.round(targetVolume * 100));
+      }
     });
   })();
 
