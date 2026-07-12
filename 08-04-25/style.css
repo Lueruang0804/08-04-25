@@ -427,6 +427,28 @@ input:focus-visible {
   border-color: var(--lavender);
   box-shadow: var(--glow-lavender);
 }
+.editor__field-label {
+  display: block;
+  color: var(--lavender);
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+.editor__line-input {
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  border: 2px solid var(--glass-border);
+  background: rgba(248,248,248,0.05);
+  color: var(--soft-white);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  margin-bottom: 0.9rem;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.editor__line-input:focus-visible {
+  border-color: var(--lavender);
+  box-shadow: var(--glow-lavender);
+}
 .editor__message {
   min-height: 1.4em;
   font-size: 0.9rem;
