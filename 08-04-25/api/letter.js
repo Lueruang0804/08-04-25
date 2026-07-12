@@ -1,6 +1,6 @@
 /* ============================================================
-   GET  /api/letter          -> { content: string }
-   POST /api/letter          body: { code, content } -> { ok: true }
+   GET  /api/letter          -> { content, greeting, signature }
+   POST /api/letter          body: { code, content, greeting, signature } -> { ok: true }
 
    Reads/writes the love letter in Supabase (table "letter", single
    row with id = 1). All calls to Supabase use the service_role key,
@@ -16,8 +16,11 @@ const DEFAULT_LETTER =
   "means to you, your favorite memory together, and what you're looking " +
   'forward to. This is the heart of the whole website — take your time ' +
   'with it.]';
+const DEFAULT_GREETING = 'Dear My Love,';
+const DEFAULT_SIGNATURE = '[Your Name]';
 
 const MAX_CONTENT_LENGTH = 20000;
+const MAX_LINE_LENGTH = 100;
 
 function normalize(value) {
   return String(value || '').replace(/[^0-9]/g, '');
@@ -40,20 +43,20 @@ async function readLetter() {
   }
 
   const resp = await fetch(
-    url + '/rest/v1/letter?select=content&id=eq.1',
+    url + '/rest/v1/letter?select=content,greeting,signature&id=eq.1',
     { headers: supabaseHeaders() }
   );
   if (!resp.ok) {
     throw new Error('supabase_read_failed');
   }
   const rows = await resp.json();
-  if (Array.isArray(rows) && rows.length > 0 && typeof rows[0].content === 'string') {
-    return rows[0].content;
+  if (Array.isArray(rows) && rows.length > 0) {
+    return rows[0];
   }
   return null;
 }
 
-async function writeLetter(content) {
+async function writeLetter(content, greeting, signature) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) {
@@ -67,7 +70,13 @@ async function writeLetter(content) {
       headers: Object.assign({}, supabaseHeaders(), {
         Prefer: 'resolution=merge-duplicates,return=minimal'
       }),
-      body: JSON.stringify({ id: 1, content: content, updated_at: new Date().toISOString() })
+      body: JSON.stringify({
+        id: 1,
+        content: content,
+        greeting: greeting,
+        signature: signature,
+        updated_at: new Date().toISOString()
+      })
     }
   );
   if (!resp.ok) {
@@ -78,12 +87,21 @@ async function writeLetter(content) {
 module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      const content = await readLetter();
-      return res.status(200).json({ content: content === null ? DEFAULT_LETTER : content });
+      const row = await readLetter();
+      return res.status(200).json({
+        content: row && typeof row.content === 'string' ? row.content : DEFAULT_LETTER,
+        greeting: row && typeof row.greeting === 'string' && row.greeting.trim() ? row.greeting : DEFAULT_GREETING,
+        signature: row && typeof row.signature === 'string' && row.signature.trim() ? row.signature : DEFAULT_SIGNATURE
+      });
     } catch (err) {
       // Supabase not configured yet or briefly unreachable — degrade
       // gracefully instead of breaking the reveal for a visitor.
-      return res.status(200).json({ content: DEFAULT_LETTER, offline: true });
+      return res.status(200).json({
+        content: DEFAULT_LETTER,
+        greeting: DEFAULT_GREETING,
+        signature: DEFAULT_SIGNATURE,
+        offline: true
+      });
     }
   }
 
@@ -111,8 +129,11 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'content_too_long' });
     }
 
+    const greeting = (typeof body.greeting === 'string' && body.greeting.trim()) ? body.greeting.trim().slice(0, MAX_LINE_LENGTH) : DEFAULT_GREETING;
+    const signature = (typeof body.signature === 'string' && body.signature.trim()) ? body.signature.trim().slice(0, MAX_LINE_LENGTH) : DEFAULT_SIGNATURE;
+
     try {
-      await writeLetter(content);
+      await writeLetter(content, greeting, signature);
       return res.status(200).json({ ok: true });
     } catch (err) {
       return res.status(502).json({ error: 'save_failed' });
