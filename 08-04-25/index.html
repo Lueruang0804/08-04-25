@@ -90,6 +90,15 @@
       <h3 class="editor__section-title">Love Letter</h3>
       <p class="editor__hint">This becomes the letter she sees the next time she enters the viewing passcode.</p>
 
+      <label for="editor-greeting-input" class="editor__field-label">Greeting</label>
+      <input
+        id="editor-greeting-input"
+        class="editor__line-input"
+        type="text"
+        maxlength="100"
+        placeholder="Dear My Love,"
+      />
+
       <label for="editor-textarea" class="sr-only">Love letter text</label>
       <textarea
         id="editor-textarea"
@@ -97,6 +106,15 @@
         rows="8"
         placeholder="Write your letter here. Leave a blank line between paragraphs."
       ></textarea>
+
+      <label for="editor-signature-input" class="editor__field-label">Sign your name</label>
+      <input
+        id="editor-signature-input"
+        class="editor__line-input"
+        type="text"
+        maxlength="100"
+        placeholder="Your Name"
+      />
 
       <p id="editor-message" class="editor__message" role="status" aria-live="polite"></p>
 
@@ -214,7 +232,7 @@
   <div id="editor-preview-modal" class="lightbox editor__preview-modal" hidden>
     <button class="lightbox__close" id="editor-preview-close" aria-label="Close preview">&times;</button>
     <div class="glass-card letter__card editor__preview-card">
-      <p class="letter__paragraph letter__paragraph--first"><span class="drop-cap">D</span>ear My Love,</p>
+      <p class="letter__paragraph letter__paragraph--first" id="editor-preview-greeting"></p>
       <div id="editor-preview-content"></div>
       <div class="heart-divider" aria-hidden="true">
         <span class="heart-divider__line"></span>
@@ -222,7 +240,7 @@
         <span class="heart-divider__line"></span>
       </div>
       <p class="letter__signoff">Forever yours,</p>
-      <p class="letter__signature">[Your Name]</p>
+      <p class="letter__signature" id="editor-preview-signature"></p>
     </div>
   </div>
 </section>
@@ -250,7 +268,9 @@
       <p class="card-eyebrow">A letter, just for you</p>
 
       <div class="letter__body">
-        <p class="letter__paragraph letter__paragraph--first">
+        <!-- Greeting and signature are populated from the saved letter
+             (via /api/letter), same as the body. -->
+        <p class="letter__paragraph letter__paragraph--first" id="letter-greeting">
           <span class="drop-cap">D</span>ear My Love,
         </p>
 
@@ -268,7 +288,7 @@
         </div>
 
         <p class="letter__signoff">Forever yours,</p>
-        <p class="letter__signature">[Your Name]</p>
+        <p class="letter__signature" id="letter-signature">[Your Name]</p>
       </div>
 
     </div>
