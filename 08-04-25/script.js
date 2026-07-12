@@ -1094,6 +1094,22 @@
     var nextBtn = document.getElementById('lightbox-next');
     var currentIndex = 0;
 
+    var SLIDESHOW_INTERVAL_MS = 3500;
+    var slideshowTimer = null;
+
+    function stopSlideshow() {
+      if (slideshowTimer) {
+        window.clearInterval(slideshowTimer);
+        slideshowTimer = null;
+      }
+    }
+
+    function startSlideshow() {
+      stopSlideshow();
+      if (prefersReducedMotion) return;
+      slideshowTimer = window.setInterval(function () { showRelative(1); }, SLIDESHOW_INTERVAL_MS);
+    }
+
     // Photos live in Supabase Storage, uploaded through the admin
     // editor. A slot with nothing uploaded yet 404s, which onerror
     // turns into the existing tulip placeholder styling.
@@ -1125,11 +1141,13 @@
       lightboxCaption.textContent = caption ? caption.textContent : CONFIG.galleryCaptionFallback;
       lightbox.hidden = false;
       closeBtn.focus();
+      startSlideshow();
     }
 
     function closeLightbox() {
       lightbox.hidden = true;
       lightboxImg.src = '';
+      stopSlideshow();
     }
 
     function showRelative(offset) {
