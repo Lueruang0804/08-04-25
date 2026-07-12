@@ -4,13 +4,14 @@
 
    Uploads a photo to Supabase Storage (public bucket "photos"),
    admin-passcode protected, using the service_role key (server-only).
-   `slot` is either 1-6 (gallery) or the literal string "featured"
-   (the single photo above the Reasons list) — stored at a fixed path
-   per slot, "photo1".."photo6" or "photofeatured", deliberately with
-   NO file extension, so the public URL never changes no matter what
-   image format is uploaded; Supabase serves it with whatever
-   Content-Type was set at upload time, which is all a browser needs
-   to render it correctly.
+   `slot` is 1-6 (gallery), "featured" (the single photo above the
+   Reasons list), or "surprise" (revealed by the surprise-gift button
+   at the bottom of Reasons) — stored at a fixed path per slot,
+   "photo1".."photo6", "photofeatured", or "photosurprise",
+   deliberately with NO file extension, so the public URL never
+   changes no matter what image format is uploaded; Supabase serves
+   it with whatever Content-Type was set at upload time, which is all
+   a browser needs to render it correctly.
    ============================================================ */
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -67,8 +68,8 @@ module.exports = async function handler(req, res) {
 
   const rawSlot = String(body.slot || '');
   var slot;
-  if (rawSlot === 'featured') {
-    slot = 'featured';
+  if (rawSlot === 'featured' || rawSlot === 'surprise') {
+    slot = rawSlot;
   } else if (/^[1-6]$/.test(rawSlot)) {
     slot = rawSlot;
   } else {
