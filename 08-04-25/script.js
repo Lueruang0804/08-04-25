@@ -699,7 +699,43 @@
       img.addEventListener('error', function () { img.removeAttribute('src'); });
       img.src = url;
     });
+
+    // Surprise gift: only reveal the button once a photo has actually
+    // been uploaded to the "surprise" slot — probe quietly first so a
+    // visitor never sees a button that opens a broken image.
+    var surpriseBtn = document.getElementById('surprise-btn');
+    var surpriseImg = document.getElementById('surprise-reveal-img');
+    getSupabaseBaseUrl().then(function (baseUrl) {
+      var url = photoUrlForSlot(baseUrl, 'surprise');
+      if (!url) return;
+      var probe = new Image();
+      probe.addEventListener('load', function () {
+        surpriseImg.src = url;
+        surpriseBtn.hidden = false;
+      });
+      probe.src = url;
+    });
   }
+
+  /* ---------- Surprise gift reveal ---------- */
+  (function initSurpriseGift() {
+    var btn = document.getElementById('surprise-btn');
+    var overlay = document.getElementById('surprise-reveal');
+    var closeBtn = document.getElementById('surprise-reveal-close');
+
+    btn.addEventListener('click', function () {
+      overlay.hidden = false;
+      spawnHeartBurst();
+      closeBtn.focus();
+    });
+    closeBtn.addEventListener('click', function () { overlay.hidden = true; });
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) overlay.hidden = true;
+    });
+    document.addEventListener('keydown', function (e) {
+      if (!overlay.hidden && e.key === 'Escape') overlay.hidden = true;
+    });
+  })();
 
   /* ---------- Hidden admin editor ---------- */
   var editorTextarea = document.getElementById('editor-textarea');
