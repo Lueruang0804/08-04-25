@@ -585,7 +585,7 @@
     });
   }
 
-  /* ---------- Supabase Storage URLs (photos + music share this) ---------- */
+  /* ---------- Supabase Storage URLs (photos) ---------- */
   var supabaseBaseUrlPromise = null;
   function getSupabaseBaseUrl() {
     if (!supabaseBaseUrlPromise) {
@@ -603,11 +603,6 @@
   function photoUrlForSlot(baseUrl, slot) {
     if (!baseUrl) return null;
     return baseUrl + '/storage/v1/object/public/photos/photo' + slot;
-  }
-
-  function musicUrl(baseUrl) {
-    if (!baseUrl) return null;
-    return baseUrl + '/storage/v1/object/public/music/our-song';
   }
 
   /* ---------- Reasons I Love You: featured photo + text list ---------- */
@@ -993,44 +988,6 @@
     });
   });
 
-  /* ---------- Hidden admin editor: Music ---------- */
-  var musicUploadInput = document.getElementById('music-upload-input');
-  var musicUploadMessage = document.getElementById('music-upload-message');
-
-  musicUploadInput.addEventListener('change', function () {
-    var file = musicUploadInput.files && musicUploadInput.files[0];
-    if (!file) return;
-
-    musicUploadMessage.textContent = 'Uploading...';
-    musicUploadMessage.classList.remove('is-success');
-
-    var reader = new FileReader();
-    reader.onload = function () {
-      fetch(CONFIG.apiBase + '/music', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          code: sessionAdminCode,
-          audioBase64: reader.result,
-          contentType: file.type
-        })
-      }).then(function (resp) {
-        if (!resp.ok) throw new Error('upload_failed');
-        musicUploadMessage.textContent = 'Saved. This is now the background song.';
-        musicUploadMessage.classList.add('is-success');
-        musicUploadInput.value = '';
-      }).catch(function () {
-        musicUploadMessage.textContent = "Couldn't upload (no server connected in this preview).";
-        musicUploadMessage.classList.remove('is-success');
-      });
-    };
-    reader.onerror = function () {
-      musicUploadMessage.textContent = 'Could not read that file.';
-      musicUploadMessage.classList.remove('is-success');
-    };
-    reader.readAsDataURL(file);
-  });
-
   /* ============================================================
      3. FLOATING FX: hearts, petals, sparkles
      ============================================================ */
@@ -1214,13 +1171,10 @@
   })();
 
   /* ============================================================
-     6. MUSIC PLAYER — "Our Song" prefers a hosted audio file uploaded
-        through the admin editor (see api/music.js). If nothing's been
-        uploaded yet, it automatically falls back to embedding
-        CONFIG.fallbackYoutubeId via YouTube's official IFrame Player
-        (compliant with their terms — it's their own embed, not a
-        downloaded/rehosted copy). Uploading a file later always takes
-        priority over the fallback.
+     6. MUSIC PLAYER — "Our Song" plays via a visually-hidden YouTube
+        embed (see YOUTUBE_VIDEO_ID below), driven by the YouTube
+        IFrame API, but controlled entirely through our own play/pause
+        + volume UI.
 
         It starts itself automatically the moment she unlocks the site
         (see startMusicExperience, called from the passcode-success
@@ -1233,10 +1187,6 @@
         it's a direct response to a real user gesture). Either path
         ends the same way: audio ramps in from silence, never a hard
         jump to full volume.
-
-        The floating play/pause button and volume slider work the same
-        regardless of which backend (uploaded file vs. YouTube
-        fallback) ends up active.
      ============================================================ */
   (function initMusicPlayer() {
     var toggleBtn = document.getElementById('music-toggle');
@@ -1244,20 +1194,17 @@
     var playBtn = document.getElementById('music-play');
     var playIcon = document.getElementById('music-play-icon');
     var volumeSlider = document.getElementById('music-volume');
-    var audio = document.getElementById('bg-audio');
 
     var VOLUME_STORAGE_KEY = 'anniversary-music-volume';
     var DEFAULT_VOLUME = 0.35;
-    // Used only when no file has been uploaded through the admin
-    // editor's Music section — swap freely, or upload a file instead.
-    var FALLBACK_YOUTUBE_ID = 'hkLVI3DoeAE';
+    // Swap this to change the background song — paste any YouTube video ID.
+    var YOUTUBE_VIDEO_ID = 'hkLVI3DoeAE';
 
     var isPlaying = false;
     var backendReady = false;
     var autoStartRequested = false;
     var autoStartAttempted = false;
     var fadeTimer = null;
-    var mode = null; // 'audio' | 'youtube'
     var ytPlayer = null;
 
     function loadStoredVolume() {
@@ -1267,7 +1214,6 @@
 
     var targetVolume = loadStoredVolume();
     volumeSlider.value = String(targetVolume);
-    audio.volume = 0;
 
     function setPlayingUI(playing) {
       isPlaying = playing;
@@ -1282,22 +1228,17 @@
     }
 
     function currentSetVolume(v) {
-      if (mode === 'audio') audio.volume = v;
-      else if (mode === 'youtube' && ytPlayer) ytPlayer.setVolume(Math.round(v * 100));
+      if (ytPlayer) ytPlayer.setVolume(Math.round(v * 100));
     }
 
     function currentPlay() {
-      if (mode === 'audio') return audio.play();
-      if (mode === 'youtube' && ytPlayer) {
-        ytPlayer.playVideo();
-        return Promise.resolve();
-      }
-      return Promise.reject(new Error('no_backend'));
+      if (!ytPlayer) return Promise.reject(new Error('no_backend'));
+      ytPlayer.playVideo();
+      return Promise.resolve();
     }
 
     function currentPause() {
-      if (mode === 'audio') audio.pause();
-      else if (mode === 'youtube' && ytPlayer) ytPlayer.pauseVideo();
+      if (ytPlayer) ytPlayer.pauseVideo();
     }
 
     function fadeVolumeTo(target, durationMs) {
@@ -1350,85 +1291,45 @@
       beginAutoplayAttempt();
     };
 
-    function activateYouTubeFallback() {
-      mode = 'youtube';
-
-      function createPlayer() {
-        ytPlayer = new YT.Player('youtube-player', {
-          videoId: FALLBACK_YOUTUBE_ID,
-          playerVars: {
-            autoplay: 0,
-            controls: 0,
-            disablekb: 1,
-            fs: 0,
-            modestbranding: 1,
-            playsinline: 1,
-            loop: 1,
-            playlist: FALLBACK_YOUTUBE_ID
+    function createPlayer() {
+      ytPlayer = new YT.Player('youtube-player', {
+        videoId: YOUTUBE_VIDEO_ID,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          playsinline: 1,
+          loop: 1,
+          playlist: YOUTUBE_VIDEO_ID
+        },
+        events: {
+          onReady: function () {
+            backendReady = true;
+            ytPlayer.setVolume(0);
+            if (autoStartRequested) beginAutoplayAttempt();
           },
-          events: {
-            onReady: function () {
-              backendReady = true;
-              ytPlayer.setVolume(0);
-              if (autoStartRequested) beginAutoplayAttempt();
-            },
-            onStateChange: function (event) {
-              if (event.data === YT.PlayerState.PLAYING) setPlayingUI(true);
-              else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setPlayingUI(false);
-            },
-            onError: function () {
-              playBtn.disabled = true;
-              playBtn.setAttribute('aria-label', "Couldn't load the song");
-            }
+          onStateChange: function (event) {
+            if (event.data === YT.PlayerState.PLAYING) setPlayingUI(true);
+            else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) setPlayingUI(false);
+          },
+          onError: function () {
+            playBtn.disabled = true;
+            playBtn.setAttribute('aria-label', "Couldn't load the song");
           }
-        });
-      }
-
-      if (window.YT && window.YT.Player) {
-        createPlayer();
-      } else {
-        window.onYouTubeIframeAPIReady = createPlayer;
-        var tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.body.appendChild(tag);
-      }
+        }
+      });
     }
 
-    // Prefer an uploaded file. Probe it quietly with a throwaway Audio
-    // object so a missing upload never shows a broken <audio> in the
-    // real player before falling back to YouTube.
-    getSupabaseBaseUrl().then(function (baseUrl) {
-      var url = musicUrl(baseUrl);
-      if (!url) {
-        activateYouTubeFallback();
-        return;
-      }
-
-      var settled = false;
-      var probe = new Audio();
-
-      function useUploadedFile() {
-        if (settled) return;
-        settled = true;
-        mode = 'audio';
-        audio.src = url;
-        backendReady = true;
-        if (autoStartRequested) beginAutoplayAttempt();
-      }
-      function useFallback() {
-        if (settled) return;
-        settled = true;
-        activateYouTubeFallback();
-      }
-
-      probe.addEventListener('loadedmetadata', useUploadedFile, { once: true });
-      probe.addEventListener('error', useFallback, { once: true });
-      probe.src = url;
-      window.setTimeout(useFallback, 3000); // don't hang forever either way
-    });
-
-    audio.addEventListener('playing', function () { if (mode === 'audio') setPlayingUI(true); });
-    audio.addEventListener('pause', function () { if (mode === 'audio') setPlayingUI(false); });
+    if (window.YT && window.YT.Player) {
+      createPlayer();
+    } else {
+      window.onYouTubeIframeAPIReady = createPlayer;
+      var tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
 
     toggleBtn.addEventListener('click', function () {
       var isOpen = !panel.hidden;
