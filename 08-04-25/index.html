@@ -205,22 +205,16 @@
       <div class="editor__actions">
         <button id="reasons-save" class="btn btn--glow" type="button">Save Reasons</button>
       </div>
-    </div>
 
-    <!-- ---------- Music ---------- -->
-    <div class="editor__section">
-      <h3 class="editor__section-title">Music</h3>
-      <p class="editor__hint">Upload an audio file to use as the background song (MP3 recommended, keep it under ~3MB — a shorter or lower-bitrate clip works best since it loops anyway).</p>
-
-      <label for="music-upload-input" class="sr-only">Upload background music</label>
-      <input
-        type="file"
-        id="music-upload-input"
-        accept="audio/mpeg,audio/mp3,audio/wav,audio/ogg,audio/mp4,audio/x-m4a,audio/aac"
-        aria-label="Upload background music"
-      >
-
-      <p id="music-upload-message" class="editor__message" role="status" aria-live="polite"></p>
+      <p class="editor__hint">Surprise gift photo — revealed when she taps the surprise button at the bottom of this section.</p>
+      <div class="photo-editor-list photo-editor-list--single">
+        <div class="photo-editor-row" data-slot="surprise">
+          <span class="photo-editor-label">Surprise Photo</span>
+          <img class="photo-editor-preview" data-photo-slot="surprise" alt="">
+          <input type="file" class="photo-editor-input" accept="image/jpeg,image/png,image/webp" aria-label="Upload surprise photo">
+          <span class="photo-editor-status"></span>
+        </div>
+      </div>
     </div>
 
     <div class="editor__actions editor__actions--footer">
@@ -372,7 +366,24 @@
     <!-- Populated from the saved reasons list (via /api/reasons),
          editable through the admin editor. -->
     <div id="reasons-list" class="reasons__list" aria-live="polite"></div>
+
+    <!-- Surprise gift: only shown once a photo has been uploaded to
+         the "surprise" slot through the admin editor. -->
+    <div class="reasons__surprise reveal-on-scroll">
+      <button id="surprise-btn" class="btn btn--glow" type="button" hidden>
+        <span>🎁 Here's My Surprise For You</span>
+      </button>
+    </div>
   </section>
+
+  <!-- ---------- SURPRISE GIFT REVEAL ---------- -->
+  <div id="surprise-reveal" class="lightbox surprise-reveal" hidden>
+    <button class="lightbox__close" id="surprise-reveal-close" aria-label="Close surprise">&times;</button>
+    <div class="surprise-reveal__card glass-card">
+      <p class="surprise-reveal__label">A little surprise, just for you ❤</p>
+      <img id="surprise-reveal-img" class="surprise-reveal__img" src="" alt="A surprise for you">
+    </div>
+  </div>
 
   <!-- ---------- FOOTER ---------- -->
   <footer class="footer" hidden>
@@ -399,13 +410,9 @@
     <input id="music-volume" class="music-player__volume" type="range" min="0" max="1" step="0.01" value="0.35" aria-label="Volume">
     <span class="music-player__title">Our Song</span>
   </div>
-  <!-- Hosted audio file, uploaded through the admin editor and stored
-       in Supabase Storage. script.js sets the src once it knows the
-       Supabase URL. If nothing's been uploaded yet, it falls back to
-       a hidden YouTube embed instead (see CONFIG.fallbackYoutubeId in
-       script.js) — the YouTube IFrame API script only gets loaded if
-       that fallback is actually needed. -->
-  <audio id="bg-audio" preload="auto" loop></audio>
+  <!-- Visually-hidden YouTube embed that provides the background song
+       (see YOUTUBE_VIDEO_ID in script.js). The IFrame API script only
+       gets loaded once the player actually initializes. -->
   <div id="youtube-player" class="youtube-player-hidden" aria-hidden="true"></div>
 </div>
 
