@@ -26,6 +26,8 @@
       "[Write your personal letter here. Talk about how you met, what she means to you, " +
       "your favorite memory together, and what you're looking forward to. This is the heart " +
       "of the whole website — take your time with it.]",
+    offlineGreeting: 'Dear My Love,',
+    offlineSignature: '[Your Name]',
     offlineTimelineEntries: [
       { icon: '❤️', title: 'The Day We Met', text: '[Describe the day your story began.]' },
       { icon: '🌷', title: 'Our First Date', text: '[Describe your first date together.]' },
@@ -356,20 +358,43 @@
     });
   }
 
+  function renderGreeting(el, text) {
+    text = String(text || CONFIG.offlineGreeting);
+    el.innerHTML = '';
+    if (text.length === 0) return;
+    var dropCap = document.createElement('span');
+    dropCap.className = 'drop-cap';
+    dropCap.textContent = text.charAt(0);
+    el.appendChild(dropCap);
+    el.appendChild(document.createTextNode(text.slice(1)));
+  }
+
   function fetchLetter() {
     return fetch(CONFIG.apiBase + '/letter')
       .then(function (resp) {
         if (!resp.ok) throw new Error('fetch_failed');
         return resp.json();
       })
-      .then(function (data) { return data.content || CONFIG.offlineLetter; })
-      .catch(function () { return CONFIG.offlineLetter; });
+      .then(function (data) {
+        return {
+          content: data.content || CONFIG.offlineLetter,
+          greeting: data.greeting || CONFIG.offlineGreeting,
+          signature: data.signature || CONFIG.offlineSignature
+        };
+      })
+      .catch(function () {
+        return { content: CONFIG.offlineLetter, greeting: CONFIG.offlineGreeting, signature: CONFIG.offlineSignature };
+      });
   }
 
   function loadLetterIntoPage() {
     var container = document.getElementById('letter-content');
-    fetchLetter().then(function (content) {
-      renderLetterParagraphs(container, content);
+    var greetingEl = document.getElementById('letter-greeting');
+    var signatureEl = document.getElementById('letter-signature');
+    fetchLetter().then(function (letter) {
+      renderLetterParagraphs(container, letter.content);
+      renderGreeting(greetingEl, letter.greeting);
+      signatureEl.textContent = letter.signature;
     });
   }
 
@@ -625,12 +650,16 @@
 
   /* ---------- Hidden admin editor ---------- */
   var editorTextarea = document.getElementById('editor-textarea');
+  var editorGreetingInput = document.getElementById('editor-greeting-input');
+  var editorSignatureInput = document.getElementById('editor-signature-input');
   var editorMessage = document.getElementById('editor-message');
   var editorSaveBtn = document.getElementById('editor-save');
   var editorCancelBtn = document.getElementById('editor-cancel');
   var editorPreviewBtn = document.getElementById('editor-preview');
   var editorPreviewModal = document.getElementById('editor-preview-modal');
+  var editorPreviewGreeting = document.getElementById('editor-preview-greeting');
   var editorPreviewContent = document.getElementById('editor-preview-content');
+  var editorPreviewSignature = document.getElementById('editor-preview-signature');
   var editorPreviewCloseBtn = document.getElementById('editor-preview-close');
 
   function openEditor() {
@@ -638,9 +667,17 @@
     editorMessage.classList.remove('is-success');
     editorTextarea.value = '';
     editorTextarea.disabled = true;
-    fetchLetter().then(function (content) {
-      editorTextarea.value = content;
+    editorGreetingInput.value = '';
+    editorGreetingInput.disabled = true;
+    editorSignatureInput.value = '';
+    editorSignatureInput.disabled = true;
+    fetchLetter().then(function (letter) {
+      editorTextarea.value = letter.content;
       editorTextarea.disabled = false;
+      editorGreetingInput.value = letter.greeting;
+      editorGreetingInput.disabled = false;
+      editorSignatureInput.value = letter.signature;
+      editorSignatureInput.disabled = false;
       editorMessage.textContent = '';
       editorTextarea.focus();
     });
@@ -678,6 +715,9 @@
       editorMessage.classList.remove('is-success');
       return;
     }
+    var greeting = editorGreetingInput.value.trim() || CONFIG.offlineGreeting;
+    var signature = editorSignatureInput.value.trim() || CONFIG.offlineSignature;
+
     editorSaveBtn.disabled = true;
     editorMessage.textContent = 'Saving...';
     editorMessage.classList.remove('is-success');
@@ -685,7 +725,7 @@
     fetch(CONFIG.apiBase + '/letter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: sessionAdminCode, content: content })
+      body: JSON.stringify({ code: sessionAdminCode, content: content, greeting: greeting, signature: signature })
     }).then(function (resp) {
       editorSaveBtn.disabled = false;
       if (!resp.ok) throw new Error('save_failed');
@@ -708,7 +748,9 @@
   });
 
   editorPreviewBtn.addEventListener('click', function () {
+    renderGreeting(editorPreviewGreeting, editorGreetingInput.value.trim() || CONFIG.offlineGreeting);
     renderLetterParagraphs(editorPreviewContent, editorTextarea.value);
+    editorPreviewSignature.textContent = editorSignatureInput.value.trim() || CONFIG.offlineSignature;
     editorPreviewModal.hidden = false;
   });
   editorPreviewCloseBtn.addEventListener('click', function () {
